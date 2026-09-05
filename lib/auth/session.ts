@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify, type JWTPayload } from "jose"
 import { cookies } from "next/headers"
 import { getAuthSecret, getEnv, isProductionLike } from "@/lib/env"
 import { ROLES, type Role, type SessionUser } from "@/types/domain"
+import { GLOBAL_SCOPE } from "@/lib/auth/scope"
 
 export const SESSION_COOKIE = "bb_session"
 
@@ -10,6 +11,10 @@ type SessionClaims = JWTPayload & {
 	email: string
 	name: string
 	role: Role
+	orgId: string
+	orgSlug: string
+	scopePath: string
+	tags: string[]
 }
 
 function getSecretKey(): Uint8Array {
@@ -22,6 +27,10 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
 		email: user.email,
 		name: user.name,
 		role: user.role,
+		orgId: user.orgId,
+		orgSlug: user.orgSlug,
+		scopePath: user.scopePath,
+		tags: user.tags,
 	})
 		.setProtectedHeader({ alg: "HS256", typ: "JWT" })
 		.setSubject(user.id)
@@ -36,7 +45,7 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
 			algorithms: ["HS256"],
 		})
 		const claims = payload as SessionClaims
-		if (!claims.sub || !claims.email || !claims.name) {
+		if (!claims.sub || !claims.email || !claims.name || !claims.orgId || !claims.orgSlug) {
 			return null
 		}
 		if (!ROLES.includes(claims.role)) {
@@ -47,6 +56,10 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
 			email: claims.email,
 			name: claims.name,
 			role: claims.role,
+			orgId: claims.orgId,
+			orgSlug: claims.orgSlug,
+			scopePath: claims.scopePath || GLOBAL_SCOPE,
+			tags: Array.isArray(claims.tags) ? claims.tags : [],
 		}
 	} catch {
 		return null

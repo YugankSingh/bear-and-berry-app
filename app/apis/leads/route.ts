@@ -4,7 +4,7 @@ import { leadIngestSchema } from "@/lib/validations/lead"
 import { createLead, listLeads } from "@/lib/repositories/leads"
 import { notifyLeadIngest } from "@/lib/leads/notify"
 import { requirePermission } from "@/lib/auth/require-auth"
-import { ensureBootstrap } from "@/lib/seed"
+import { ensureDatabaseReady } from "@/lib/seed"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 import { withCors } from "@/lib/api/cors"
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 			return fail("UNAUTHORIZED", "A valid ingest key is required.", 401, headers)
 		}
 
-		await ensureBootstrap()
+		await ensureDatabaseReady()
 		const parsed = leadIngestSchema.safeParse(await readJson(request))
 		if (!parsed.success) {
 			const emailIssue = parsed.error.issues.find((issue) => issue.path.includes("email"))

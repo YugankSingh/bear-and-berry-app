@@ -9,6 +9,7 @@ export const machineCreateSchema = z.object({
 	locationId: z.string().min(1).nullable().optional(),
 	uptimePercent: z.number().min(0).max(100).default(0),
 	cupsToday: z.number().int().min(0).default(0),
+	tags: z.array(z.string().trim().min(1).max(40)).optional(),
 })
 
 export const machinePatchSchema = machineCreateSchema.partial()

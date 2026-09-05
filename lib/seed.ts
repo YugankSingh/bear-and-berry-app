@@ -1,140 +1,180 @@
+import { ObjectId } from "mongodb"
 import { getEnv } from "@/lib/env"
 import { ensureIndexes, locationsCollection, machinesCollection } from "@/lib/db/collections"
-import { createUser, countUsers } from "@/lib/repositories/users"
-import { createLead } from "@/lib/repositories/leads"
+import { upsertOrganization } from "@/lib/repositories/organizations"
+import { countBlogPosts, createBlogPost } from "@/lib/repositories/blogs"
 import { insertInventorySlots } from "@/lib/repositories/inventory"
+import { BLOG_POSTS } from "@/lib/cms/default-posts"
+import { BEAR_AND_BERRY_SLUG, VENDFORGE_LABS_SLUG, joinScopePath } from "@/lib/auth/scope"
 import type { LocationDocument, MachineDocument } from "@/lib/db/documents"
 
-let seedPromise: Promise<void> | null = null
+let readyPromise: Promise<void> | null = null
 
-export async function ensureBootstrap(): Promise<void> {
+export async function ensureDatabaseReady(): Promise<void> {
 	if (process.env.NEXT_PHASE === "phase-production-build") {
 		return
 	}
-
-	if (!seedPromise) {
-		seedPromise = runBootstrap().catch((error: unknown) => {
-			seedPromise = null
+	if (!readyPromise) {
+		readyPromise = bootstrap().catch((error: unknown) => {
+			readyPromise = null
 			throw error
 		})
 	}
-	return seedPromise
+	return readyPromise
 }
 
-async function runBootstrap(): Promise<void> {
+async function bootstrap(): Promise<void> {
 	await ensureIndexes()
-
-	const env = getEnv()
-	const existingUsers = await countUsers()
-	if (existingUsers > 0) {
-		return
-	}
-
-	if (!env.SEED_ADMIN_EMAIL || !env.SEED_ADMIN_PASSWORD) {
-		return
-	}
-
-	await createUser({
-		name: env.SEED_ADMIN_NAME,
-		email: env.SEED_ADMIN_EMAIL,
-		password: env.SEED_ADMIN_PASSWORD,
-		role: "super_admin",
-		organization: "Bear & Berry",
+	await upsertOrganization({
+		slug: BEAR_AND_BERRY_SLUG,
+		name: "Bear & Berry",
+		kind: "internal",
+		tags: ["fleet"],
+	})
+	await upsertOrganization({
+		slug: VENDFORGE_LABS_SLUG,
+		name: "VendForge Labs",
+		kind: "internal",
+		tags: ["cms"],
 	})
 
-	if (!env.SEED_DEMO_DATA) {
-		return
+	const env = getEnv()
+	if (env.SEED_DEMO_DATA) {
+		const locations = await locationsCollection()
+		if ((await locations.countDocuments()) === 0) {
+			await seedDemoFleet()
+		}
+		if ((await countBlogPosts()) === 0) {
+			await seedDefaultBlogs()
+		}
 	}
+}
 
-	await seedDemoFleet()
+async function seedDefaultBlogs(): Promise<void> {
+	for (const post of BLOG_POSTS) {
+		await createBlogPost({
+			slug: post.slug,
+			title: post.title,
+			description: post.description,
+			category: post.category,
+			readTime: post.readTime,
+			status: "published",
+			content: post.content,
+			authorName: "Bear & Berry",
+			tags: ["seed"],
+		})
+	}
 }
 
 async function seedDemoFleet(): Promise<void> {
+	const org = await upsertOrganization({
+		slug: BEAR_AND_BERRY_SLUG,
+		name: "Bear & Berry",
+		kind: "internal",
+		tags: ["fleet"],
+	})
+	const orgId = new ObjectId(org.id)
 	const now = new Date()
 	const locations = await locationsCollection()
-	const locationDocs: Omit<LocationDocument, "_id">[] = [
+
+	const locationSeeds = [
 		{
 			name: "Indiranagar Office Park",
 			city: "Bengaluru",
+			region: "South",
 			address: "12th Main, Indiranagar",
-			siteType: "office",
+			siteType: "office" as const,
 			footfallDaily: 1400,
-			createdAt: now,
-			updatedAt: now,
+			tags: ["office", "pilot"],
 		},
 		{
 			name: "Powai Fitness Club",
 			city: "Mumbai",
+			region: "West",
 			address: "Hiranandani, Powai",
-			siteType: "gym",
+			siteType: "gym" as const,
 			footfallDaily: 900,
-			createdAt: now,
-			updatedAt: now,
+			tags: ["gym"],
 		},
 		{
 			name: "Cyber Hub Retail",
 			city: "Gurugram",
+			region: "North",
 			address: "DLF Cyber Hub",
-			siteType: "mall",
+			siteType: "mall" as const,
 			footfallDaily: 3200,
-			createdAt: now,
-			updatedAt: now,
+			tags: ["mall"],
 		},
 	]
 
+	const locationDocs: Omit<LocationDocument, "_id">[] = locationSeeds.map((location) => ({
+		...location,
+		orgId,
+		path: joinScopePath([BEAR_AND_BERRY_SLUG, location.region, location.city, location.name]),
+		createdAt: now,
+		updatedAt: now,
+	}))
+
 	const locationResult = await locations.insertMany(locationDocs as LocationDocument[])
 	const locationIds = Object.values(locationResult.insertedIds)
-
-	const firstLocation = locationIds[0]
-	const secondLocation = locationIds[1]
-	const thirdLocation = locationIds[2]
-	if (!firstLocation || !secondLocation || !thirdLocation) {
+	const first = locationIds[0]
+	const second = locationIds[1]
+	const third = locationIds[2]
+	if (!first || !second || !third) {
 		return
 	}
 
 	const machines = await machinesCollection()
-	const machineDocs: Omit<MachineDocument, "_id">[] = [
+	const machineSeeds = [
 		{
 			name: "BB-01 Indiranagar",
 			serialNumber: "BB01-BLR-001",
-			model: "BB-01",
-			status: "online",
-			locationId: firstLocation,
+			status: "online" as const,
+			locationId: first,
+			locationPath: locationDocs[0]?.path ?? "",
 			uptimePercent: 99.2,
 			cupsToday: 86,
-			lastHeartbeatAt: now,
-			createdAt: now,
-			updatedAt: now,
+			tags: ["gen1"],
 		},
 		{
 			name: "BB-01 Powai",
 			serialNumber: "BB01-BOM-014",
-			model: "BB-01",
-			status: "maintenance",
-			locationId: secondLocation,
+			status: "maintenance" as const,
+			locationId: second,
+			locationPath: locationDocs[1]?.path ?? "",
 			uptimePercent: 94.1,
 			cupsToday: 21,
-			lastHeartbeatAt: new Date(now.getTime() - 1000 * 60 * 42),
-			createdAt: now,
-			updatedAt: now,
+			tags: ["gen1"],
 		},
 		{
 			name: "BB-01 Cyber Hub",
 			serialNumber: "BB01-GGN-007",
-			model: "BB-01",
-			status: "online",
-			locationId: thirdLocation,
+			status: "online" as const,
+			locationId: third,
+			locationPath: locationDocs[2]?.path ?? "",
 			uptimePercent: 98.6,
 			cupsToday: 124,
-			lastHeartbeatAt: now,
-			createdAt: now,
-			updatedAt: now,
+			tags: ["gen1"],
 		},
 	]
 
-	const machineResult = await machines.insertMany(machineDocs as MachineDocument[])
-	const machineIds = Object.values(machineResult.insertedIds)
+	const machineDocs: Omit<MachineDocument, "_id">[] = machineSeeds.map((machine) => ({
+		name: machine.name,
+		serialNumber: machine.serialNumber,
+		model: "BB-01",
+		status: machine.status,
+		locationId: machine.locationId,
+		orgId,
+		path: `${machine.locationPath}/${machine.serialNumber.toLowerCase()}`,
+		tags: machine.tags,
+		uptimePercent: machine.uptimePercent,
+		cupsToday: machine.cupsToday,
+		lastHeartbeatAt: machine.status === "online" ? now : new Date(now.getTime() - 1000 * 60 * 42),
+		createdAt: now,
+		updatedAt: now,
+	}))
 
+	const machineResult = await machines.insertMany(machineDocs as MachineDocument[])
 	const slots = [
 		{ sku: "mango", label: "Alphonso mango", quantity: 42, capacity: 60 },
 		{ sku: "strawberry", label: "Strawberry", quantity: 11, capacity: 48 },
@@ -142,39 +182,17 @@ async function seedDemoFleet(): Promise<void> {
 		{ sku: "yogurt", label: "Yogurt base", quantity: 8, capacity: 40 },
 	]
 
-	const inventoryDocs = machineIds.flatMap((machineId, machineIndex) =>
-		slots.map((slot, slotIndex) => ({
-			machineId,
-			slotIndex: slotIndex + 1,
-			sku: slot.sku,
-			label: slot.label,
-			quantity: machineIndex === 1 && slot.sku === "yogurt" ? 3 : slot.quantity,
-			capacity: slot.capacity,
-			updatedAt: now,
-		})),
+	await insertInventorySlots(
+		Object.values(machineResult.insertedIds).flatMap((machineId, machineIndex) =>
+			slots.map((slot, slotIndex) => ({
+				machineId,
+				slotIndex: slotIndex + 1,
+				sku: slot.sku,
+				label: slot.label,
+				quantity: machineIndex === 1 && slot.sku === "yogurt" ? 3 : slot.quantity,
+				capacity: slot.capacity,
+				updatedAt: now,
+			})),
+		),
 	)
-
-	await insertInventorySlots(inventoryDocs)
-
-	await createLead({
-		name: "Aditi Rao",
-		email: "aditi@northstar.gym",
-		organization: "Northstar Gyms",
-		location: "Pune",
-		footfall: "1,200 / day",
-		intent: "unit",
-		source: "contact",
-		message: "Looking at two machines for our Koregaon Park and Baner clubs.",
-	})
-
-	await createLead({
-		name: "Rohit Menon",
-		email: "rohit@orbitoffices.in",
-		business: "Orbit Offices",
-		location: "Hyderabad",
-		timeline: "Q4 this year",
-		intent: "proposal",
-		source: "homepage",
-		message: "Need a commercial proposal for a 6-machine campus rollout.",
-	})
 }

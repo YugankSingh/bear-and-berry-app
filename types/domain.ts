@@ -20,8 +20,13 @@ export const PERMISSIONS = [
 	"users:write",
 	"settings:read",
 	"settings:write",
+	"cms:read",
+	"cms:write",
 ] as const
 export type Permission = (typeof PERMISSIONS)[number]
+
+export const ORG_KINDS = ["internal", "partner"] as const
+export type OrgKind = (typeof ORG_KINDS)[number]
 
 export const LEAD_INTENTS = ["unit", "proposal", "admin"] as const
 export type LeadIntent = (typeof LEAD_INTENTS)[number]
@@ -41,12 +46,26 @@ export type MachineModel = (typeof MACHINE_MODELS)[number]
 export const SITE_TYPES = ["office", "gym", "mall", "campus", "transit", "other"] as const
 export type SiteType = (typeof SITE_TYPES)[number]
 
+export type OrganizationRecord = {
+	id: string
+	slug: string
+	name: string
+	kind: OrgKind
+	tags: string[]
+	createdAt: string
+	updatedAt: string
+}
+
 export type UserRecord = {
 	id: string
 	name: string
 	email: string
 	role: Role
+	orgId: string
+	orgSlug: string
 	organization: string | null
+	scopePath: string
+	tags: string[]
 	isActive: boolean
 	createdAt: string
 	updatedAt: string
@@ -57,6 +76,10 @@ export type SessionUser = {
 	name: string
 	email: string
 	role: Role
+	orgId: string
+	orgSlug: string
+	scopePath: string
+	tags: string[]
 }
 
 export type LeadRecord = {
@@ -81,9 +104,13 @@ export type LocationRecord = {
 	id: string
 	name: string
 	city: string
+	region: string
 	address: string | null
 	siteType: SiteType
 	footfallDaily: number | null
+	orgId: string
+	path: string
+	tags: string[]
 	createdAt: string
 	updatedAt: string
 }
@@ -96,6 +123,9 @@ export type MachineRecord = {
 	status: MachineStatus
 	locationId: string | null
 	locationName: string | null
+	orgId: string
+	path: string
+	tags: string[]
 	uptimePercent: number
 	cupsToday: number
 	lastHeartbeatAt: string | null

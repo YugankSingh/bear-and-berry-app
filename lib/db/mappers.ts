@@ -1,20 +1,36 @@
 import type {
+	BlogPostDocument,
+	InventorySlotDocument,
 	LeadDocument,
 	LocationDocument,
 	MachineDocument,
+	OrganizationDocument,
 	UserDocument,
-	InventorySlotDocument,
 } from "@/lib/db/documents"
+import type { BlogPostRecord } from "@/types/cms"
 import type {
 	InventorySlotRecord,
 	LeadRecord,
 	LocationRecord,
 	MachineRecord,
+	OrganizationRecord,
 	UserRecord,
 } from "@/types/domain"
 
 export function toIso(date: Date): string {
 	return date.toISOString()
+}
+
+export function mapOrganization(doc: OrganizationDocument): OrganizationRecord {
+	return {
+		id: doc._id.toHexString(),
+		slug: doc.slug,
+		name: doc.name,
+		kind: doc.kind,
+		tags: doc.tags,
+		createdAt: toIso(doc.createdAt),
+		updatedAt: toIso(doc.updatedAt),
+	}
 }
 
 export function mapUser(doc: UserDocument): UserRecord {
@@ -23,7 +39,11 @@ export function mapUser(doc: UserDocument): UserRecord {
 		name: doc.name,
 		email: doc.email,
 		role: doc.role,
+		orgId: doc.orgId.toHexString(),
+		orgSlug: doc.orgSlug,
 		organization: doc.organization,
+		scopePath: doc.scopePath,
+		tags: doc.tags,
 		isActive: doc.isActive,
 		createdAt: toIso(doc.createdAt),
 		updatedAt: toIso(doc.updatedAt),
@@ -55,9 +75,13 @@ export function mapLocation(doc: LocationDocument): LocationRecord {
 		id: doc._id.toHexString(),
 		name: doc.name,
 		city: doc.city,
+		region: doc.region,
 		address: doc.address,
 		siteType: doc.siteType,
 		footfallDaily: doc.footfallDaily,
+		orgId: doc.orgId.toHexString(),
+		path: doc.path,
+		tags: doc.tags,
 		createdAt: toIso(doc.createdAt),
 		updatedAt: toIso(doc.updatedAt),
 	}
@@ -75,6 +99,9 @@ export function mapMachine(
 		status: doc.status,
 		locationId: doc.locationId ? doc.locationId.toHexString() : null,
 		locationName,
+		orgId: doc.orgId.toHexString(),
+		path: doc.path,
+		tags: doc.tags,
 		uptimePercent: doc.uptimePercent,
 		cupsToday: doc.cupsToday,
 		lastHeartbeatAt: doc.lastHeartbeatAt ? toIso(doc.lastHeartbeatAt) : null,
@@ -96,6 +123,24 @@ export function mapInventorySlot(
 		label: doc.label,
 		quantity: doc.quantity,
 		capacity: doc.capacity,
+		updatedAt: toIso(doc.updatedAt),
+	}
+}
+
+export function mapBlogPost(doc: BlogPostDocument): BlogPostRecord {
+	return {
+		id: doc._id.toHexString(),
+		slug: doc.slug,
+		title: doc.title,
+		description: doc.description,
+		category: doc.category,
+		readTime: doc.readTime,
+		status: doc.status,
+		publishedAt: doc.publishedAt ? toIso(doc.publishedAt) : null,
+		content: doc.content,
+		authorName: doc.authorName,
+		tags: doc.tags,
+		createdAt: toIso(doc.createdAt),
 		updatedAt: toIso(doc.updatedAt),
 	}
 }

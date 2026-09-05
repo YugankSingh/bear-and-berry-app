@@ -3,7 +3,7 @@ import { jwtVerify } from "jose"
 import { ROLES, type Role } from "@/types/domain"
 
 const SESSION_COOKIE = "bb_session"
-const PUBLIC_PATHS = ["/login", "/apis/health", "/apis/leads", "/apis/auth/login"]
+const PUBLIC_PATHS = ["/login", "/apis/health", "/apis/leads", "/apis/auth/login", "/apis/public"]
 
 function isPublicPath(pathname: string): boolean {
 	if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
