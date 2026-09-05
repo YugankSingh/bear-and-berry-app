@@ -28,8 +28,10 @@ export type AppEnv = z.infer<typeof envSchema> & {
 	APP_ENV: AppEnvironment
 }
 
+// Local development and staging share one database for now.
+// Production stays isolated.
 const DATABASE_BY_ENV: Record<AppEnvironment, string> = {
-	development: "bear_and_berry_dev",
+	development: "bear_and_berry_staging",
 	staging: "bear_and_berry_staging",
 	production: "bear_and_berry_prod",
 }
