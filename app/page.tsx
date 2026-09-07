@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation"
+import { redirectTo } from "@/lib/auth/next-path"
+import { ORGANIZATION_ROOT } from "@/lib/auth/org-path"
 
 export default function HomePage() {
-	redirect("/overview")
+	redirectTo(ORGANIZATION_ROOT)
 }

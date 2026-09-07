@@ -1,5 +1,6 @@
 import { blogWriteSchema } from "@/lib/validations/blog"
 import { createBlogPost, listBlogPosts } from "@/lib/repositories/blogs"
+import { revalidateLandingBlog } from "@/lib/cms/revalidate-landing"
 import { requireVendforgeCms } from "@/lib/auth/require-auth"
 import { ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
 			...body,
 			authorName: body.authorName ?? user.name,
 		})
+		if (post.status === "published") {
+			await revalidateLandingBlog([post.slug])
+		}
 		return ok({ post }, 201)
 	} catch (error) {
 		return handleApiError(error)

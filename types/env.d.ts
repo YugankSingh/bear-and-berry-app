@@ -4,9 +4,12 @@ declare namespace NodeJS {
 		AUTH_URL?: string
 		AUTH_SECRET?: string
 		SESSION_TTL_DAYS?: string
+		INVITE_TTL_DAYS?: string
 		MONGODB_URI?: string
 		MONGODB_DB_NAME?: string
 		LEADS_INGEST_API_KEY?: string
+		LANDING_SITE_URL?: string
+		LANDING_REVALIDATE_SECRET?: string
 		CORS_ORIGINS?: string
 		SEED_ADMIN_NAME?: string
 		SEED_ADMIN_EMAIL?: string

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { parseBlogBody, serializeBlogBody } from "@/lib/cms/body"
+import { toRoute } from "@/lib/auth/next-path"
 import type { BlogPostRecord, BlogStatus } from "@/types/cms"
 
 type BlogEditorProps = {
@@ -45,7 +46,7 @@ export function BlogEditor({ post }: BlogEditorProps) {
 			setError(result.error ?? "Could not save the post.")
 			return
 		}
-		router.push("/cms/blog")
+		router.push(toRoute("/admin/cms/blog"))
 		router.refresh()
 	}
 

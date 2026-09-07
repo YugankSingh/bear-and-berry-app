@@ -1,16 +1,17 @@
 import type { Metadata } from "next"
-import { PageShell } from "@/components/layout/page-shell"
+import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { listInventory } from "@/lib/repositories/inventory"
+import { loadVisibleInventory } from "@/lib/auth/visible-fleet"
 
 export const metadata: Metadata = {
 	title: "Inventory",
 }
 
 export default async function InventoryPage() {
-	let slots = [] as Awaited<ReturnType<typeof listInventory>>
+	const user = await getDashboardUser()
+	let slots = [] as Awaited<ReturnType<typeof loadVisibleInventory>>
 	try {
-		slots = await listInventory()
+		slots = await loadVisibleInventory(user)
 	} catch (error) {
 		console.error(error)
 	}
@@ -18,13 +19,13 @@ export default async function InventoryPage() {
 	return (
 		<PageShell
 			title="Inventory"
-			subtitle="Ingredient slots across the fleet. Refill anything sitting under a quarter tank."
+			subtitle="Ingredient slots on machines you can access."
 			permission="inventory:read"
 		>
 			{slots.length === 0 ? (
 				<EmptyState
-					title="No inventory slots"
-					body="Slots appear once machines are provisioned and seeded."
+					title="No inventory in your scope"
+					body="Slots appear for machines granted by organization, location, unit, or tag."
 				/>
 			) : (
 				<div className="overflow-hidden rounded-3xl bg-white card-shadow">

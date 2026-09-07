@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { getAppEnvironmentLabel } from "@/lib/env-client"
+import { OrgSwitcher } from "@/components/layout/org-switcher"
 import type { SessionUser } from "@/types/domain"
 
 type TopbarProps = {
@@ -9,9 +10,10 @@ type TopbarProps = {
 	subtitle: string
 	user: SessionUser
 	environment: "development" | "staging" | "production"
+	workspace?: "admin" | "org"
 }
 
-export function Topbar({ title, subtitle, user, environment }: TopbarProps) {
+export function Topbar({ title, subtitle, user, environment, workspace = "org" }: TopbarProps) {
 	const router = useRouter()
 
 	async function signOut() {
@@ -32,6 +34,13 @@ export function Topbar({ title, subtitle, user, environment }: TopbarProps) {
 				<p className="mt-3 max-w-xl text-[14px] leading-[1.7] text-[#8C8C8C]">{subtitle}</p>
 			</div>
 			<div className="flex items-center gap-3 pt-2">
+				{workspace === "org" || user.canAccessAdmin ? (
+					<OrgSwitcher
+						orgs={user.accessibleOrgs}
+						activeOrgSlug={user.activeOrgSlug}
+						canAccessAdmin={user.canAccessAdmin}
+					/>
+				) : null}
 				<div className="hidden text-right sm:block">
 					<p className="text-[13px] font-medium text-[#1A1A1A]">{user.name}</p>
 					<p className="text-[12px] text-[#8C8C8C]">{user.email}</p>

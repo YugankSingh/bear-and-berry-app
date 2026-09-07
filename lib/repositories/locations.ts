@@ -6,6 +6,15 @@ import type { LocationDocument } from "@/lib/db/documents"
 import type { LocationCreateInput, LocationPatchInput } from "@/lib/validations/location"
 import type { LocationRecord } from "@/types/domain"
 
+export async function findLocationById(id: string): Promise<LocationRecord | null> {
+	if (!ObjectId.isValid(id)) {
+		return null
+	}
+	const locations = await locationsCollection()
+	const doc = await locations.findOne({ _id: new ObjectId(id) })
+	return doc ? mapLocation(doc) : null
+}
+
 export async function listLocations(): Promise<LocationRecord[]> {
 	const locations = await locationsCollection()
 	const docs = await locations.find({}).sort({ name: 1 }).toArray()

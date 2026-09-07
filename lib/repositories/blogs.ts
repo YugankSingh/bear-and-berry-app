@@ -50,6 +50,15 @@ export async function listPublishedBlogPosts(): Promise<PublicBlogPost[]> {
 	})
 }
 
+export async function findBlogById(id: string): Promise<BlogPostRecord | null> {
+	if (!ObjectId.isValid(id)) {
+		return null
+	}
+	const blogs = await blogPostsCollection()
+	const doc = await blogs.findOne({ _id: new ObjectId(id) })
+	return doc ? mapBlogPost(doc) : null
+}
+
 export async function findBlogBySlug(slug: string): Promise<BlogPostRecord | null> {
 	const blogs = await blogPostsCollection()
 	const doc = await blogs.findOne({ slug })

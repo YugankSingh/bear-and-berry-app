@@ -1,5 +1,5 @@
 import { requireSession } from "@/lib/auth/require-auth"
-import { permissionsForRole } from "@/lib/auth/rbac"
+import { permissionsForUser } from "@/lib/auth/rbac"
 import { ok } from "@/lib/api/response"
 import { handleApiError } from "@/lib/api/guard"
 
@@ -8,7 +8,9 @@ export async function GET() {
 		const user = await requireSession()
 		return ok({
 			user,
-			permissions: permissionsForRole(user.role),
+			permissions: permissionsForUser(user),
+			grants: user.grantKeys,
+			memberships: user.memberships,
 		})
 	} catch (error) {
 		return handleApiError(error)

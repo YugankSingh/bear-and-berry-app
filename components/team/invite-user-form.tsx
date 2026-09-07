@@ -2,17 +2,44 @@
 
 import { useState, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
-import { ROLES, type Role } from "@/types/domain"
+import type { LocationRecord, MachineRecord, OrganizationRecord, Permission, PermissionRecord, RoleRecord } from "@/types/domain"
+import {
+	MembershipFields,
+	emptyMembershipFields,
+	type MembershipFieldsValue,
+} from "@/components/team/membership-fields"
+import { ExtraGrantBuilder } from "@/components/team/extra-grant-builder"
+import { extraGrantsRequest, membershipRequest } from "@/lib/auth/assignment"
+import type { ExtraGrantDraft } from "@/lib/auth/extra-grants"
 
-const INVITE_ROLES: Role[] = ["admin", "operator", "viewer"]
+type InviteUserFormProps = {
+	assignableRoles: RoleRecord[]
+	organizations: OrganizationRecord[]
+	locations: LocationRecord[]
+	machines: MachineRecord[]
+	catalog: PermissionRecord[]
+	grantable: Permission[]
+	canGrantExtras: boolean
+	allowOrgWildcard?: boolean
+}
 
-export function InviteUserForm() {
+export function InviteUserForm({
+	assignableRoles,
+	organizations,
+	locations,
+	machines,
+	catalog,
+	grantable,
+	canGrantExtras,
+	allowOrgWildcard = false,
+}: InviteUserFormProps) {
 	const router = useRouter()
 	const [name, setName] = useState("")
 	const [email, setEmail] = useState("")
-	const [password, setPassword] = useState("")
-	const [role, setRole] = useState<Role>("operator")
-	const [organization, setOrganization] = useState("")
+	const [roleSlug, setRoleSlug] = useState(assignableRoles[0]?.slug ?? "")
+	const selectedRole = assignableRoles.find((role) => role.slug === roleSlug) ?? assignableRoles[0]
+	const [membership, setMembership] = useState<MembershipFieldsValue>(emptyMembershipFields(organizations))
+	const [extras, setExtras] = useState<ExtraGrantDraft[]>([])
 	const [error, setError] = useState("")
 	const [loading, setLoading] = useState(false)
 
@@ -21,29 +48,56 @@ export function InviteUserForm() {
 		setLoading(true)
 		setError("")
 
+		if (!selectedRole) {
+			setLoading(false)
+			setError("Choose a role.")
+			return
+		}
+
+		const membershipBody = membershipRequest(selectedRole, membership)
+		if (typeof membershipBody === "string") {
+			setLoading(false)
+			setError(membershipBody)
+			return
+		}
+
+		const extraGrants = extraGrantsRequest(extras)
+		if (typeof extraGrants === "string") {
+			setLoading(false)
+			setError(extraGrants)
+			return
+		}
+
 		const response = await fetch("/apis/users", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				name,
 				email,
-				password,
-				role,
-				organization: organization || undefined,
+				role: selectedRole.slug,
+				membership: membershipBody,
+				extraGrants: canGrantExtras ? extraGrants : [],
 			}),
 		})
-		const payload = (await response.json()) as { ok: boolean; error?: string }
+		const payload = (await response.json()) as {
+			ok: boolean
+			error?: string
+			data?: { inviteSent?: boolean }
+		}
 		setLoading(false)
 
 		if (!payload.ok) {
-			setError(payload.error ?? "Could not create user.")
+			setError(payload.error ?? "Could not send the invitation.")
 			return
+		}
+		if (payload.data?.inviteSent === false) {
+			setError("Invitation saved, but email was not sent. Check SMTP settings.")
 		}
 
 		setName("")
 		setEmail("")
-		setPassword("")
-		setOrganization("")
+		setMembership(emptyMembershipFields(organizations))
+		setExtras([])
 		router.refresh()
 	}
 
@@ -70,39 +124,45 @@ export function InviteUserForm() {
 				placeholder="Email"
 				className="rounded-2xl border border-[#ECEAE6] bg-[#F8F6F2] px-4 py-3 text-[14px] outline-none"
 			/>
-			<input
-				required
-				type="password"
-				minLength={8}
-				value={password}
-				onChange={(event) => setPassword(event.target.value)}
-				placeholder="Temporary password"
-				className="rounded-2xl border border-[#ECEAE6] bg-[#F8F6F2] px-4 py-3 text-[14px] outline-none"
-			/>
 			<select
-				value={role}
-				onChange={(event) => setRole(event.target.value as Role)}
-				className="rounded-2xl border border-[#ECEAE6] bg-[#F8F6F2] px-4 py-3 text-[14px] outline-none"
+				value={roleSlug}
+				onChange={(event) => {
+					setRoleSlug(event.target.value)
+					setMembership(emptyMembershipFields(organizations))
+				}}
+				className="rounded-2xl border border-[#ECEAE6] bg-[#F8F6F2] px-4 py-3 text-[14px] outline-none md:col-span-2"
 			>
-				{INVITE_ROLES.filter((item) => ROLES.includes(item)).map((item) => (
-					<option key={item} value={item}>
-						{item.replaceAll("_", " ")}
+				{assignableRoles.map((item) => (
+					<option key={item.slug} value={item.slug}>
+						{item.name}
 					</option>
 				))}
 			</select>
-			<input
-				value={organization}
-				onChange={(event) => setOrganization(event.target.value)}
-				placeholder="Organization (optional)"
-				className="rounded-2xl border border-[#ECEAE6] bg-[#F8F6F2] px-4 py-3 text-[14px] outline-none md:col-span-2"
+			<MembershipFields
+				role={selectedRole}
+				value={membership}
+				onChange={setMembership}
+				organizations={organizations}
 			/>
+			{canGrantExtras ? (
+				<ExtraGrantBuilder
+					drafts={extras}
+					onChange={setExtras}
+					grantable={grantable}
+					catalog={catalog}
+					organizations={organizations}
+					locations={locations}
+					machines={machines}
+					allowOrgWildcard={allowOrgWildcard}
+				/>
+			) : null}
 			{error ? <p className="text-[13px] text-[#BD0C16] md:col-span-2">{error}</p> : null}
 			<button
 				type="submit"
 				disabled={loading}
 				className="rounded-full bg-[#BD0C16] px-6 py-3 text-[13px] font-medium text-white hover:bg-[#a00a12] disabled:opacity-50 md:col-span-2"
 			>
-				{loading ? "Inviting…" : "Create account"}
+				{loading ? "Sending invite…" : "Send invitation"}
 			</button>
 		</form>
 	)

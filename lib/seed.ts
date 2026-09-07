@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb"
 import { getEnv } from "@/lib/env"
 import { ensureIndexes, locationsCollection, machinesCollection } from "@/lib/db/collections"
+import { ensureRbacCatalog } from "@/lib/repositories/roles"
 import { upsertOrganization } from "@/lib/repositories/organizations"
 import { countBlogPosts, createBlogPost } from "@/lib/repositories/blogs"
 import { insertInventorySlots } from "@/lib/repositories/inventory"
@@ -25,6 +26,7 @@ export async function ensureDatabaseReady(): Promise<void> {
 
 async function bootstrap(): Promise<void> {
 	await ensureIndexes()
+	await ensureRbacCatalog()
 	await upsertOrganization({
 		slug: BEAR_AND_BERRY_SLUG,
 		name: "Bear & Berry",
@@ -134,7 +136,7 @@ async function seedDemoFleet(): Promise<void> {
 			locationPath: locationDocs[0]?.path ?? "",
 			uptimePercent: 99.2,
 			cupsToday: 86,
-			tags: ["gen1"],
+			tags: ["gen1", "pilot", "south"],
 		},
 		{
 			name: "BB-01 Powai",
@@ -144,7 +146,7 @@ async function seedDemoFleet(): Promise<void> {
 			locationPath: locationDocs[1]?.path ?? "",
 			uptimePercent: 94.1,
 			cupsToday: 21,
-			tags: ["gen1"],
+			tags: ["gen1", "west"],
 		},
 		{
 			name: "BB-01 Cyber Hub",
@@ -154,7 +156,7 @@ async function seedDemoFleet(): Promise<void> {
 			locationPath: locationDocs[2]?.path ?? "",
 			uptimePercent: 98.6,
 			cupsToday: 124,
-			tags: ["gen1"],
+			tags: ["gen1", "north", "flagship"],
 		},
 	]
 

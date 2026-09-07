@@ -15,6 +15,20 @@ export async function listInventory(): Promise<InventorySlotRecord[]> {
 	)
 }
 
+export async function findInventoryById(id: string): Promise<InventorySlotRecord | null> {
+	if (!ObjectId.isValid(id)) {
+		return null
+	}
+	const slots = await inventoryCollection()
+	const doc = await slots.findOne({ _id: new ObjectId(id) })
+	if (!doc) {
+		return null
+	}
+	const machines = await machinesCollection()
+	const machine = await machines.findOne({ _id: doc.machineId })
+	return mapInventorySlot(doc, machine?.name ?? "Unknown machine")
+}
+
 export async function updateInventoryQuantity(
 	id: string,
 	quantity: number,

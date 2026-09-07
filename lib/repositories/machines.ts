@@ -43,6 +43,19 @@ async function withLocations(docs: MachineDocument[]): Promise<MachineRecord[]> 
 	)
 }
 
+export async function findMachineById(id: string): Promise<MachineRecord | null> {
+	if (!ObjectId.isValid(id)) {
+		return null
+	}
+	const machines = await machinesCollection()
+	const doc = await machines.findOne({ _id: new ObjectId(id) })
+	if (!doc) {
+		return null
+	}
+	const [mapped] = await withLocations([doc])
+	return mapped ?? null
+}
+
 export async function listMachines(): Promise<MachineRecord[]> {
 	const machines = await machinesCollection()
 	const docs = await machines.find({}).sort({ name: 1 }).toArray()

@@ -1,3 +1,4 @@
+import { hasAllOrganizations } from "@/lib/auth/permissions"
 import type { SessionUser } from "@/types/domain"
 
 export const GLOBAL_SCOPE = "/"
@@ -32,7 +33,7 @@ export function isVendforgeLabs(user: Pick<SessionUser, "orgSlug">): boolean {
 }
 
 export function canSeeResource(user: SessionUser, resourcePath: string): boolean {
-	if (user.role === "super_admin") {
+	if (hasAllOrganizations(user)) {
 		return true
 	}
 	return isUnderScope(user.scopePath, resourcePath)

@@ -1,35 +1,42 @@
 import type { Metadata } from "next"
-import { PageShell } from "@/components/layout/page-shell"
+import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { StatCard } from "@/components/ui/stat-card"
 import { Badge } from "@/components/ui/badge"
-import { countMachinesByStatus, listMachines, sumCupsToday } from "@/lib/repositories/machines"
 import { countLeadsByStatus, listLeads } from "@/lib/repositories/leads"
-import { countLowInventory } from "@/lib/repositories/inventory"
+import { loadVisibleFleet, loadVisibleInventory } from "@/lib/auth/visible-fleet"
 import { formatNumber, formatDateTime, titleCase } from "@/lib/format"
 import { getAppEnvironment, getMongoDbName } from "@/lib/env"
+import type { MachineRecord, MachineStatus } from "@/types/domain"
 
 export const metadata: Metadata = {
 	title: "Overview",
 }
 
 export default async function OverviewPage() {
-	let machineCounts = { online: 0, offline: 0, maintenance: 0, error: 0 }
+	const user = await getDashboardUser()
+	let machineCounts: Record<MachineStatus, number> = { online: 0, offline: 0, maintenance: 0, error: 0 }
 	let cupsToday = 0
 	let leadCounts = { new: 0, contacted: 0, qualified: 0, closed: 0 }
 	let lowInventory = 0
-	let machines = [] as Awaited<ReturnType<typeof listMachines>>
+	let machines = [] as MachineRecord[]
 	let leads = [] as Awaited<ReturnType<typeof listLeads>>
 	let loadError: string | null = null
 
 	try {
-		;[machineCounts, cupsToday, leadCounts, lowInventory, machines, leads] = await Promise.all([
-			countMachinesByStatus(),
-			sumCupsToday(),
+		const [fleet, slots, leadStatus, inbound] = await Promise.all([
+			loadVisibleFleet(user),
+			loadVisibleInventory(user),
 			countLeadsByStatus(),
-			countLowInventory(),
-			listMachines(),
 			listLeads(),
 		])
+		machines = fleet.machines
+		for (const machine of machines) {
+			machineCounts[machine.status] += 1
+			cupsToday += machine.cupsToday
+		}
+		lowInventory = slots.filter((slot) => slot.capacity > 0 && slot.quantity / slot.capacity <= 0.25).length
+		leadCounts = leadStatus
+		leads = inbound
 	} catch (error) {
 		console.error(error)
 		loadError = "MongoDB is not reachable yet. Start the database and refresh."

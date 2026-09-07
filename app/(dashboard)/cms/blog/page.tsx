@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/empty-state"
 import { listBlogPosts } from "@/lib/repositories/blogs"
 import { requireVendforgeCms } from "@/lib/auth/require-auth"
+import { hasPermission } from "@/lib/auth/permissions"
+import { toRoute } from "@/lib/auth/next-path"
 import { formatDate, titleCase } from "@/lib/format"
 
 export const metadata: Metadata = {
@@ -12,7 +14,8 @@ export const metadata: Metadata = {
 }
 
 export default async function BlogCmsPage() {
-	await requireVendforgeCms("cms:read")
+	const user = await requireVendforgeCms("cms:read")
+	const canWrite = hasPermission(user, "cms:write")
 	let posts = [] as Awaited<ReturnType<typeof listBlogPosts>>
 	try {
 		posts = await listBlogPosts()
@@ -23,17 +26,19 @@ export default async function BlogCmsPage() {
 	return (
 		<PageShell
 			title="Blog CMS"
-			subtitle="VendForge Labs publishing for bearandberry.in. Drafts stay private. Published posts are served to the landing page over SSR."
+			subtitle="VendForge Labs publishing for bearandberry.in. Drafts stay private. Publishing refreshes the cached landing-page article."
 			permission="cms:read"
 		>
-			<div className="mb-6 flex justify-end">
-				<Link
-					href="/cms/blog/new"
-					className="rounded-full bg-[#BD0C16] px-6 py-3 text-[13px] font-medium text-white hover:bg-[#a00a12]"
-				>
-					New post
-				</Link>
-			</div>
+			{canWrite ? (
+				<div className="mb-6 flex justify-end">
+					<Link
+						href={toRoute("/admin/cms/blog/new")}
+						className="rounded-full bg-[#BD0C16] px-6 py-3 text-[13px] font-medium text-white hover:bg-[#a00a12]"
+					>
+						New post
+					</Link>
+				</div>
+			) : null}
 			{posts.length === 0 ? (
 				<EmptyState
 					title="No posts yet"
@@ -53,9 +58,13 @@ export default async function BlogCmsPage() {
 							{posts.map((post) => (
 								<tr key={post.id} className="border-b border-[#ECEAE6] last:border-0">
 									<td className="px-6 py-5">
-										<Link href={`/cms/blog/${post.id}`} className="text-[14px] font-medium text-[#1A1A1A]">
-											{post.title}
-										</Link>
+										{canWrite ? (
+											<Link href={toRoute(`/admin/cms/blog/${post.id}`)} className="text-[14px] font-medium text-[#1A1A1A]">
+												{post.title}
+											</Link>
+										) : (
+											<p className="text-[14px] font-medium text-[#1A1A1A]">{post.title}</p>
+										)}
 										<p className="mt-1 text-[12px] text-[#8C8C8C]">/{post.slug}</p>
 									</td>
 									<td className="px-6 py-5">

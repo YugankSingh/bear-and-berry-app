@@ -30,7 +30,7 @@ export default async function EditBlogPostPage({ params }: EditBlogPageProps) {
 	return (
 		<PageShell
 			title="Edit post"
-			subtitle="Updates go live on the landing page after the next ISR refresh."
+			subtitle="Saving a published post refreshes that article on the landing page."
 			permission="cms:write"
 		>
 			<BlogEditor post={mapBlogPost(doc)} />

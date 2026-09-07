@@ -1,9 +1,34 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { jwtVerify } from "jose"
-import { ROLES, type Role } from "@/types/domain"
+import { hasDashboardAccess } from "@/lib/auth/access"
+import { ORGANIZATION_ROOT, ORG_HEADER, PATH_HEADER, WORKSPACE_COOKIE, parseOrganizationPath } from "@/lib/auth/org-path"
+import type { AccessStatus } from "@/types/domain"
 
 const SESSION_COOKIE = "bb_session"
-const PUBLIC_PATHS = ["/login", "/apis/health", "/apis/leads", "/apis/auth/login", "/apis/public"]
+const PUBLIC_PATHS = [
+	"/login",
+	"/signup",
+	"/waitlist",
+	"/verify",
+	"/invite",
+	"/access-removed",
+	"/apis/health",
+	"/apis/leads",
+	"/apis/auth/login",
+	"/apis/auth/lookup",
+	"/apis/auth/signup",
+	"/apis/auth/verify-otp",
+	"/apis/auth/resend-otp",
+	"/apis/auth/accept-invite",
+	"/apis/auth/invite",
+	"/apis/auth/logout",
+	"/apis/public",
+]
+const WAITLIST_API_PATHS = ["/apis/auth/logout", "/apis/auth/me"]
+
+type SessionState =
+	| { valid: false }
+	| { valid: true; accessStatus: AccessStatus; canAccessAdmin: boolean; activeOrgSlug: string }
 
 function isPublicPath(pathname: string): boolean {
 	if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
@@ -20,36 +45,95 @@ function getSecret(): Uint8Array | null {
 	return new TextEncoder().encode(secret)
 }
 
-async function hasValidSession(request: NextRequest): Promise<boolean> {
+function resolveJwtAccessStatus(value: unknown): AccessStatus {
+	if (value === "waitlisted" || value === "pending_invite") {
+		return value
+	}
+	return "invited"
+}
+
+async function readSession(request: NextRequest): Promise<SessionState> {
 	const token = request.cookies.get(SESSION_COOKIE)?.value
 	const secret = getSecret()
 	if (!token || !secret) {
-		return false
+		return { valid: false }
 	}
 
 	try {
 		const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] })
-		return typeof payload.sub === "string" && ROLES.includes(payload.role as Role)
+		if (typeof payload.sub !== "string" || typeof payload.role !== "string" || payload.role.length === 0) {
+			return { valid: false }
+		}
+		return {
+			valid: true,
+			accessStatus: resolveJwtAccessStatus(payload.accessStatus),
+			canAccessAdmin: payload.canAccessAdmin === true,
+			activeOrgSlug: typeof payload.activeOrgSlug === "string" ? payload.activeOrgSlug : "",
+		}
 	} catch {
-		return false
+		return { valid: false }
 	}
+}
+
+function signedInHome(request: NextRequest, session: Extract<SessionState, { valid: true }>): NextResponse {
+	const dest = hasDashboardAccess(session.accessStatus) ? ORGANIZATION_ROOT : "/waitlist"
+	return NextResponse.redirect(new URL(dest, request.url))
+}
+
+function withWorkspaceHeaders(request: NextRequest): NextResponse {
+	const requestHeaders = new Headers(request.headers)
+	requestHeaders.set(PATH_HEADER, request.nextUrl.pathname)
+	const parsed = parseOrganizationPath(request.nextUrl.pathname)
+	if (parsed) {
+		requestHeaders.set(ORG_HEADER, parsed.orgId)
+	}
+	const response = NextResponse.next({ request: { headers: requestHeaders } })
+	if (parsed) {
+		response.cookies.set(WORKSPACE_COOKIE, parsed.orgId, {
+			httpOnly: true,
+			sameSite: "lax",
+			path: "/",
+		})
+	}
+	return response
 }
 
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl
+	const session = await readSession(request)
 
 	if (isPublicPath(pathname)) {
-		if (pathname === "/login" && (await hasValidSession(request))) {
-			return NextResponse.redirect(new URL("/overview", request.url))
+		if ((pathname === "/login" || pathname === "/signup" || pathname === "/verify") && session.valid) {
+			return signedInHome(request, session)
+		}
+		if (pathname === "/waitlist") {
+			if (!session.valid) {
+				return NextResponse.redirect(new URL("/login", request.url))
+			}
+			if (hasDashboardAccess(session.accessStatus)) {
+				return NextResponse.redirect(new URL(ORGANIZATION_ROOT, request.url))
+			}
 		}
 		return NextResponse.next()
 	}
 
-	if (await hasValidSession(request)) {
-		if (pathname === "/") {
-			return NextResponse.redirect(new URL("/overview", request.url))
+	if (session.valid) {
+		if (!hasDashboardAccess(session.accessStatus)) {
+			if (pathname.startsWith("/apis/")) {
+				if (WAITLIST_API_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+					return NextResponse.next()
+				}
+				return NextResponse.json(
+					{ ok: false, code: "FORBIDDEN", error: "Your account is on the waitlist." },
+					{ status: 403 },
+				)
+			}
+			return NextResponse.redirect(new URL("/waitlist", request.url))
 		}
-		return NextResponse.next()
+		if (pathname === "/") {
+			return signedInHome(request, session)
+		}
+		return withWorkspaceHeaders(request)
 	}
 
 	if (pathname.startsWith("/apis/")) {

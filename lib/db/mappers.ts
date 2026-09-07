@@ -8,12 +8,19 @@ import type {
 	UserDocument,
 } from "@/lib/db/documents"
 import type { BlogPostRecord } from "@/types/cms"
+import { resolveAccessStatus, resolveInviteState } from "@/lib/auth/access"
+import { resolvePermissions } from "@/lib/auth/permissions"
+import { orgSlugFromPath, resolveResourceAccess } from "@/lib/auth/resource-access"
+import { compileGrants, membershipsFromAccess } from "@/lib/auth/compile-grants"
+import { normalizeMemberships, stringifyGrants } from "@/lib/auth/grants"
+import { titleCase } from "@/lib/format"
 import type {
 	InventorySlotRecord,
 	LeadRecord,
 	LocationRecord,
 	MachineRecord,
 	OrganizationRecord,
+	RoleRecord,
 	UserRecord,
 } from "@/types/domain"
 
@@ -33,18 +40,60 @@ export function mapOrganization(doc: OrganizationDocument): OrganizationRecord {
 	}
 }
 
-export function mapUser(doc: UserDocument): UserRecord {
+export function mapUser(doc: UserDocument, role?: RoleRecord | null): UserRecord {
+	const extraPermissions = resolvePermissions(null, doc.extraPermissions)
+	const permissions = resolvePermissions(role, extraPermissions)
+	const extraGrants = doc.extraGrants ?? []
+	const resourceAccess = resolveResourceAccess({
+		...doc,
+		permissions,
+		extraPermissions,
+	})
+	const memberships = normalizeMemberships(
+		Array.isArray(doc.memberships)
+			? doc.memberships
+			: membershipsFromAccess({
+					role: doc.role,
+					resourceAccess,
+					orgSlug: doc.orgSlug,
+					permissions,
+				}),
+	)
+	const grants = compileGrants({
+		role,
+		permissions,
+		extraPermissions,
+		extraGrants,
+		memberships,
+		resourceAccess,
+		orgSlug: doc.orgSlug,
+	})
 	return {
 		id: doc._id.toHexString(),
 		name: doc.name,
 		email: doc.email,
 		role: doc.role,
+		roleName: role?.name ?? titleCase(doc.role),
+		roleRank: role?.rank ?? 0,
 		orgId: doc.orgId.toHexString(),
 		orgSlug: doc.orgSlug,
 		organization: doc.organization,
 		scopePath: doc.scopePath,
 		tags: doc.tags,
 		isActive: doc.isActive,
+		accessStatus: resolveAccessStatus(doc.accessStatus),
+		resourceAccess,
+		memberships,
+		extraPermissions,
+		extraGrants,
+		grants,
+		grantKeys: stringifyGrants(grants),
+		permissions,
+		emailVerified: doc.emailVerified ?? true,
+		passwordReady: doc.passwordReady ?? true,
+		inviteState: resolveInviteState(doc),
+		inviteExpiresAt: doc.inviteExpiresAt ? toIso(doc.inviteExpiresAt) : null,
+		deletedAt: doc.deletedAt ? toIso(doc.deletedAt) : null,
 		createdAt: toIso(doc.createdAt),
 		updatedAt: toIso(doc.updatedAt),
 	}
@@ -80,6 +129,7 @@ export function mapLocation(doc: LocationDocument): LocationRecord {
 		siteType: doc.siteType,
 		footfallDaily: doc.footfallDaily,
 		orgId: doc.orgId.toHexString(),
+		orgSlug: orgSlugFromPath(doc.path),
 		path: doc.path,
 		tags: doc.tags,
 		createdAt: toIso(doc.createdAt),
@@ -100,6 +150,7 @@ export function mapMachine(
 		locationId: doc.locationId ? doc.locationId.toHexString() : null,
 		locationName,
 		orgId: doc.orgId.toHexString(),
+		orgSlug: orgSlugFromPath(doc.path),
 		path: doc.path,
 		tags: doc.tags,
 		uptimePercent: doc.uptimePercent,

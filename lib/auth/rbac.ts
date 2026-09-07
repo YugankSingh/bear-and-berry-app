@@ -1,46 +1,26 @@
 import { isVendforgeLabs } from "@/lib/auth/scope"
-import { PERMISSIONS, type Permission, type Role, type SessionUser } from "@/types/domain"
+import { hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
+import { ADMIN_NAV, ORG_NAV, type WorkspaceKind } from "@/lib/auth/workspace"
+import type { Permission, SessionUser } from "@/types/domain"
 
-const ALL_PERMISSIONS: readonly Permission[] = PERMISSIONS
-
-const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-	super_admin: ALL_PERMISSIONS,
-	admin: ALL_PERMISSIONS.filter((permission) => permission !== "settings:write"),
-	operator: [
-		"dashboard:read",
-		"leads:read",
-		"machines:read",
-		"locations:read",
-		"inventory:read",
-		"inventory:write",
-		"revenue:read",
-		"settings:read",
-	],
-	viewer: [
-		"dashboard:read",
-		"leads:read",
-		"machines:read",
-		"locations:read",
-		"inventory:read",
-		"revenue:read",
-		"settings:read",
-	],
+export function canAccessCms(user: SessionUser): boolean {
+	if (!hasPermission(user, "cms:read")) {
+		return false
+	}
+	return isSystemAdmin(user) || isVendforgeLabs(user)
 }
 
-export function permissionsForRole(role: Role): readonly Permission[] {
-	return ROLE_PERMISSIONS[role]
+export { hasAnyPermission, hasPermission } from "@/lib/auth/permissions"
+
+export function permissionsForUser(user: Pick<SessionUser, "permissions">): readonly Permission[] {
+	return user.permissions
 }
 
-export function hasPermission(role: Role, permission: Permission): boolean {
-	return ROLE_PERMISSIONS[role].includes(permission)
-}
-
-export function hasAnyPermission(role: Role, permissions: readonly Permission[]): boolean {
-	return permissions.some((permission) => hasPermission(role, permission))
-}
-
-export function assertPermission(role: Role, permission: Permission): void {
-	if (!hasPermission(role, permission)) {
+export function assertPermission(
+	user: Pick<SessionUser, "permissions" | "grants">,
+	permission: Permission,
+): void {
+	if (!hasPermission(user, permission)) {
 		throw new RbacError(permission)
 	}
 }
@@ -55,25 +35,22 @@ export class RbacError extends Error {
 	}
 }
 
-export const NAV_ITEMS = [
-	{ href: "/overview", label: "Overview", permission: "dashboard:read" },
-	{ href: "/machines", label: "Machines", permission: "machines:read" },
-	{ href: "/locations", label: "Locations", permission: "locations:read" },
-	{ href: "/leads", label: "Leads", permission: "leads:read" },
-	{ href: "/inventory", label: "Inventory", permission: "inventory:read" },
-	{ href: "/revenue", label: "Revenue", permission: "revenue:read" },
-	{ href: "/cms/blog", label: "Blog CMS", permission: "cms:read" },
-	{ href: "/team", label: "Team", permission: "users:read" },
-	{ href: "/settings", label: "Settings", permission: "settings:read" },
-] as const
+export const NAV_ITEMS = ORG_NAV
 
-export type NavItem = (typeof NAV_ITEMS)[number]
+export type NavItem = (typeof ORG_NAV)[number] | (typeof ADMIN_NAV)[number]
 
-export function visibleNavItems(user: SessionUser): readonly NavItem[] {
-	return NAV_ITEMS.filter((item) => {
-		if (item.href.startsWith("/cms")) {
-			return isVendforgeLabs(user) && hasPermission(user.role, item.permission)
+export function navItemsFor(workspace: WorkspaceKind): readonly NavItem[] {
+	return workspace === "admin" ? ADMIN_NAV : ORG_NAV
+}
+
+export function visibleNavItems(user: SessionUser, workspace: WorkspaceKind = "org"): readonly NavItem[] {
+	return navItemsFor(workspace).filter((item) => {
+		if (item.href.includes("/cms")) {
+			return canAccessCms(user)
 		}
-		return hasPermission(user.role, item.permission)
+		if (item.permission === "orgs:all") {
+			return user.canAccessAdmin && (hasPermission(user, "orgs:all") || isSystemAdmin(user))
+		}
+		return hasPermission(user, item.permission)
 	})
 }

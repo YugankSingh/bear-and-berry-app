@@ -7,6 +7,8 @@ import type {
 	LocationDocument,
 	MachineDocument,
 	OrganizationDocument,
+	PermissionDocument,
+	RoleDocument,
 	UserDocument,
 } from "@/lib/db/documents"
 
@@ -45,8 +47,18 @@ export async function blogPostsCollection(): Promise<Collection<BlogPostDocument
 	return db.collection<BlogPostDocument>("blog_posts")
 }
 
+export async function rolesCollection(): Promise<Collection<RoleDocument>> {
+	const db = await getDb()
+	return db.collection<RoleDocument>("roles")
+}
+
+export async function permissionsCollection(): Promise<Collection<PermissionDocument>> {
+	const db = await getDb()
+	return db.collection<PermissionDocument>("permissions")
+}
+
 export async function ensureIndexes(): Promise<void> {
-	const [users, leads, machines, locations, inventory, orgs, blogs] = await Promise.all([
+	const [users, leads, machines, locations, inventory, orgs, blogs, roles, permissions] = await Promise.all([
 		usersCollection(),
 		leadsCollection(),
 		machinesCollection(),
@@ -54,10 +66,15 @@ export async function ensureIndexes(): Promise<void> {
 		inventoryCollection(),
 		organizationsCollection(),
 		blogPostsCollection(),
+		rolesCollection(),
+		permissionsCollection(),
 	])
 
 	await Promise.all([
 		users.createIndex({ email: 1 }, { unique: true }),
+		users.createIndex({ inviteTokenHash: 1 }, { unique: true, sparse: true }),
+		roles.createIndex({ slug: 1 }, { unique: true }),
+		permissions.createIndex({ key: 1 }, { unique: true }),
 		leads.createIndex({ createdAt: -1 }),
 		leads.createIndex({ email: 1, createdAt: -1 }),
 		machines.createIndex({ serialNumber: 1 }, { unique: true }),

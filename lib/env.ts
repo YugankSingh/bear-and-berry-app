@@ -6,9 +6,12 @@ const envSchema = z.object({
 	AUTH_URL: z.string().url().optional(),
 	AUTH_SECRET: z.string().min(32).optional(),
 	SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
+	INVITE_TTL_DAYS: z.coerce.number().int().positive().default(7),
 	MONGODB_URI: z.string().min(1).optional(),
 	MONGODB_DB_NAME: z.string().min(1).optional(),
 	LEADS_INGEST_API_KEY: z.string().min(8).optional(),
+	LANDING_SITE_URL: z.string().url().optional(),
+	LANDING_REVALIDATE_SECRET: z.string().min(16).optional(),
 	CORS_ORIGINS: z.string().optional(),
 	SEED_ADMIN_NAME: z.string().default("Bear & Berry Admin"),
 	SEED_ADMIN_EMAIL: z.string().email().optional(),
@@ -55,9 +58,12 @@ export function getEnv(): AppEnv {
 		AUTH_URL: emptyToUndefined(process.env.AUTH_URL),
 		AUTH_SECRET: emptyToUndefined(process.env.AUTH_SECRET),
 		SESSION_TTL_DAYS: process.env.SESSION_TTL_DAYS,
+		INVITE_TTL_DAYS: process.env.INVITE_TTL_DAYS,
 		MONGODB_URI: emptyToUndefined(process.env.MONGODB_URI),
 		MONGODB_DB_NAME: emptyToUndefined(process.env.MONGODB_DB_NAME),
 		LEADS_INGEST_API_KEY: emptyToUndefined(process.env.LEADS_INGEST_API_KEY),
+		LANDING_SITE_URL: emptyToUndefined(process.env.LANDING_SITE_URL),
+		LANDING_REVALIDATE_SECRET: emptyToUndefined(process.env.LANDING_REVALIDATE_SECRET),
 		CORS_ORIGINS: emptyToUndefined(process.env.CORS_ORIGINS),
 		SEED_ADMIN_NAME: process.env.SEED_ADMIN_NAME,
 		SEED_ADMIN_EMAIL: emptyToUndefined(process.env.SEED_ADMIN_EMAIL),
@@ -100,6 +106,14 @@ export function getMongoDbName(): string {
 	return env.MONGODB_DB_NAME ?? DATABASE_BY_ENV[env.APP_ENV]
 }
 
+export function getAppUrl(): string {
+	return getEnv().AUTH_URL ?? "http://localhost:3001"
+}
+
+export function getInviteTtlDays(): number {
+	return getEnv().INVITE_TTL_DAYS
+}
+
 export function getAuthSecret(): string {
 	const secret = getEnv().AUTH_SECRET
 	if (!secret) {
@@ -117,6 +131,35 @@ export function getCorsOrigins(): string[] {
 		.split(",")
 		.map((origin) => origin.trim())
 		.filter((origin) => origin.length > 0)
+}
+
+export function getDeveloperDiagnostics(): {
+	appEnv: AppEnvironment
+	database: string
+	appUrl: string
+	landingSiteUrl: string
+	sessionTtlDays: number
+	inviteTtlDays: number
+	smtpHost: string
+	smtpPort: number
+	smtpConfigured: boolean
+	corsOrigins: string[]
+	demoData: boolean
+} {
+	const env = getEnv()
+	return {
+		appEnv: env.APP_ENV,
+		database: getMongoDbName(),
+		appUrl: getAppUrl(),
+		landingSiteUrl: env.LANDING_SITE_URL ?? "—",
+		sessionTtlDays: env.SESSION_TTL_DAYS,
+		inviteTtlDays: env.INVITE_TTL_DAYS,
+		smtpHost: env.SMTP_HOST,
+		smtpPort: env.SMTP_PORT,
+		smtpConfigured: Boolean(env.SMTP_EMAIL && env.SMTP_PASSWORD),
+		corsOrigins: getCorsOrigins(),
+		demoData: Boolean(env.SEED_DEMO_DATA),
+	}
 }
 
 export function getTeamRecipients(): string[] {

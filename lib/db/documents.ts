@@ -6,8 +6,13 @@ import type {
 	MachineModel,
 	MachineStatus,
 	OrgKind,
+	AccessStatus,
+	ResourceAccess,
+	Permission,
 	Role,
 	SiteType,
+	OrgMembership,
+	AccessGrant,
 } from "@/types/domain"
 import type { BlogContentBlock, BlogStatus } from "@/types/cms"
 
@@ -33,6 +38,40 @@ export type UserDocument = {
 	scopePath: string
 	tags: string[]
 	isActive: boolean
+	accessStatus?: AccessStatus
+	resourceAccess?: ResourceAccess
+	memberships?: OrgMembership[]
+	extraGrants?: AccessGrant[]
+	emailVerified?: boolean
+	passwordReady?: boolean
+	inviteTokenHash?: string | null
+	inviteExpiresAt?: Date | null
+	inviteAcceptedAt?: Date | null
+	emailOtpHash?: string | null
+	emailOtpExpiresAt?: Date | null
+	extraPermissions?: Permission[]
+	deletedAt?: Date | null
+	createdAt: Date
+	updatedAt: Date
+}
+
+export type RoleDocument = {
+	_id: ObjectId
+	slug: string
+	name: string
+	description: string
+	rank: number
+	permissions: Permission[]
+	isSystem: boolean
+	createdAt: Date
+	updatedAt: Date
+}
+
+export type PermissionDocument = {
+	_id: ObjectId
+	key: Permission
+	name: string
+	group: string
 	createdAt: Date
 	updatedAt: Date
 }

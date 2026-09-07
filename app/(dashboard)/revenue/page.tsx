@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
-import { PageShell } from "@/components/layout/page-shell"
+import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { StatCard } from "@/components/ui/stat-card"
-import { listMachines, sumCupsToday } from "@/lib/repositories/machines"
+import { loadVisibleFleet } from "@/lib/auth/visible-fleet"
 import { formatNumber } from "@/lib/format"
 
 export const metadata: Metadata = {
@@ -9,14 +9,15 @@ export const metadata: Metadata = {
 }
 
 export default async function RevenuePage() {
-	let machines = [] as Awaited<ReturnType<typeof listMachines>>
-	let cupsToday = 0
+	const user = await getDashboardUser()
+	let machines = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["machines"]
 	try {
-		;[machines, cupsToday] = await Promise.all([listMachines(), sumCupsToday()])
+		machines = (await loadVisibleFleet(user)).machines
 	} catch (error) {
 		console.error(error)
 	}
 
+	const cupsToday = machines.reduce((sum, machine) => sum + machine.cupsToday, 0)
 	const assumedPrice = 149
 	const estimated = cupsToday * assumedPrice
 	const maxCups = Math.max(...machines.map((machine) => machine.cupsToday), 1)
@@ -24,7 +25,7 @@ export default async function RevenuePage() {
 	return (
 		<PageShell
 			title="Revenue"
-			subtitle="A first-pass view of pours and estimated daily take. Live UPI settlement comes next."
+			subtitle="Pours and estimated take for machines in your access scope."
 			permission="revenue:read"
 		>
 			<div className="grid gap-4 md:grid-cols-3">

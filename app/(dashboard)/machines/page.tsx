@@ -1,8 +1,10 @@
 import type { Metadata } from "next"
-import { PageShell } from "@/components/layout/page-shell"
+import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/empty-state"
-import { listMachines } from "@/lib/repositories/machines"
+import { MachineTagsEditor } from "@/components/machines/machine-tags-editor"
+import { hasPermission } from "@/lib/auth/rbac"
+import { loadVisibleFleet } from "@/lib/auth/visible-fleet"
 import { formatNumber, titleCase } from "@/lib/format"
 
 export const metadata: Metadata = {
@@ -10,9 +12,11 @@ export const metadata: Metadata = {
 }
 
 export default async function MachinesPage() {
-	let machines = [] as Awaited<ReturnType<typeof listMachines>>
+	const user = await getDashboardUser()
+	const canEdit = hasPermission(user, "machines:write")
+	let machines = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["machines"]
 	try {
-		machines = await listMachines()
+		machines = (await loadVisibleFleet(user)).machines
 	} catch (error) {
 		console.error(error)
 	}
@@ -20,13 +24,13 @@ export default async function MachinesPage() {
 	return (
 		<PageShell
 			title="Machines"
-			subtitle="BB-01 units, site assignment, and live operating status."
+			subtitle="BB-01 units you can see, including tags used for access."
 			permission="machines:read"
 		>
 			{machines.length === 0 ? (
 				<EmptyState
-					title="No machines yet"
-					body="Provision a BB-01 and assign it to a location. Demo machines appear automatically after the first admin seed."
+					title="No machines in your scope"
+					body="You only see machines granted by organization, location, unit, or tag."
 				/>
 			) : (
 				<div className="overflow-hidden rounded-3xl bg-white card-shadow">
@@ -36,6 +40,7 @@ export default async function MachinesPage() {
 								<th className="px-6 py-4 font-semibold">Unit</th>
 								<th className="px-6 py-4 font-semibold">Location</th>
 								<th className="px-6 py-4 font-semibold">Status</th>
+								<th className="px-6 py-4 font-semibold">Tags</th>
 								<th className="px-6 py-4 font-semibold">Uptime</th>
 								<th className="px-6 py-4 font-semibold">Cups today</th>
 							</tr>
@@ -64,6 +69,13 @@ export default async function MachinesPage() {
 										>
 											{titleCase(machine.status)}
 										</Badge>
+									</td>
+									<td className="px-6 py-5">
+										<MachineTagsEditor
+											machineId={machine.id}
+											tags={machine.tags}
+											canEdit={canEdit}
+										/>
 									</td>
 									<td className="px-6 py-5 text-[13px]">{machine.uptimePercent.toFixed(1)}%</td>
 									<td className="px-6 py-5 text-[13px]">{formatNumber(machine.cupsToday)}</td>

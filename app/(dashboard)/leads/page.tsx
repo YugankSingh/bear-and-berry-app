@@ -30,7 +30,7 @@ export default async function LeadsPage() {
 					body="POST the landing-page contact payload to /apis/leads and it will land here."
 				/>
 			) : (
-				<LeadsTable leads={leads} canWrite={hasPermission(user.role, "leads:write")} />
+				<LeadsTable leads={leads} canWrite={hasPermission(user, "leads:write")} />
 			)}
 		</PageShell>
 	)
