@@ -30,11 +30,12 @@ export async function seedLeadRecipientsIfEmpty(): Promise<void> {
 	const now = new Date()
 	await recipients.insertMany(
 		INITIAL_RECIPIENTS.map((email) => ({
+			_id: new ObjectId(),
 			email,
 			tags: [],
 			createdAt: now,
 			updatedAt: now,
-		})) as LeadRecipientDocument[],
+		})),
 	)
 }
 
