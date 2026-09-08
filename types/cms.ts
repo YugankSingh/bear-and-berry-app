@@ -1,33 +1,18 @@
 export const BLOG_STATUSES = ["draft", "published"] as const
 export type BlogStatus = (typeof BLOG_STATUSES)[number]
 
-export type BlogParagraphBlock = {
-	type: "p"
-	text: string
-}
-
-export type BlogHeadingBlock = {
-	type: "h2"
-	text: string
-}
-
-export type BlogListBlock = {
-	type: "list"
-	items: string[]
-}
-
-export type BlogContentBlock = BlogParagraphBlock | BlogHeadingBlock | BlogListBlock
-
 export type BlogPostRecord = {
 	id: string
 	slug: string
 	title: string
 	description: string
+	metaTitle: string
+	metaDescription: string
 	category: string
 	readTime: string
 	status: BlogStatus
 	publishedAt: string | null
-	content: BlogContentBlock[]
+	content: string
 	authorName: string
 	tags: string[]
 	createdAt: string

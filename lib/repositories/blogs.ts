@@ -1,17 +1,19 @@
 import { ObjectId } from "mongodb"
 import { blogPostsCollection } from "@/lib/db/collections"
 import { mapBlogPost } from "@/lib/db/mappers"
+import { estimateReadTime } from "@/lib/cms/read-time"
 import type { BlogPostDocument } from "@/lib/db/documents"
-import type { BlogContentBlock, BlogPostRecord, BlogStatus, PublicBlogPost } from "@/types/cms"
+import type { BlogPostRecord, BlogStatus, PublicBlogPost } from "@/types/cms"
 
 export type BlogWriteInput = {
 	slug: string
 	title: string
 	description: string
+	metaTitle: string
+	metaDescription: string
 	category: string
-	readTime: string
 	status: BlogStatus
-	content: BlogContentBlock[]
+	content: string
 	authorName: string
 	tags?: string[]
 }
@@ -24,6 +26,8 @@ function toPublic(post: BlogPostRecord): PublicBlogPost | null {
 		slug: post.slug,
 		title: post.title,
 		description: post.description,
+		metaTitle: post.metaTitle,
+		metaDescription: post.metaDescription,
 		category: post.category,
 		readTime: post.readTime,
 		publishedAt: post.publishedAt,
@@ -77,11 +81,13 @@ export async function createBlogPost(input: BlogWriteInput): Promise<BlogPostRec
 		slug: input.slug,
 		title: input.title,
 		description: input.description,
+		metaTitle: input.metaTitle.trim(),
+		metaDescription: input.metaDescription.trim(),
 		category: input.category,
-		readTime: input.readTime,
+		readTime: estimateReadTime(input.content.trim()),
 		status: input.status,
 		publishedAt: input.status === "published" ? now : null,
-		content: input.content,
+		content: input.content.trim(),
 		authorName: input.authorName,
 		tags: input.tags ?? [],
 		createdAt: now,
@@ -111,9 +117,14 @@ export async function updateBlogPost(
 	if (input.slug !== undefined) $set.slug = input.slug
 	if (input.title !== undefined) $set.title = input.title
 	if (input.description !== undefined) $set.description = input.description
+	if (input.metaTitle !== undefined) $set.metaTitle = input.metaTitle.trim()
+	if (input.metaDescription !== undefined) $set.metaDescription = input.metaDescription.trim()
 	if (input.category !== undefined) $set.category = input.category
-	if (input.readTime !== undefined) $set.readTime = input.readTime
-	if (input.content !== undefined) $set.content = input.content
+	if (input.content !== undefined) {
+		const content = input.content.trim()
+		$set.content = content
+		$set.readTime = estimateReadTime(content)
+	}
 	if (input.authorName !== undefined) $set.authorName = input.authorName
 	if (input.tags !== undefined) $set.tags = input.tags
 	if (input.status !== undefined) $set.status = input.status

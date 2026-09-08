@@ -14,7 +14,7 @@ import type {
 	OrgMembership,
 	AccessGrant,
 } from "@/types/domain"
-import type { BlogContentBlock, BlogStatus } from "@/types/cms"
+import type { BlogStatus } from "@/types/cms"
 
 export type OrganizationDocument = {
 	_id: ObjectId
@@ -142,11 +142,13 @@ export type BlogPostDocument = {
 	slug: string
 	title: string
 	description: string
+	metaTitle?: string
+	metaDescription?: string
 	category: string
 	readTime: string
 	status: BlogStatus
 	publishedAt: Date | null
-	content: BlogContentBlock[]
+	content: string
 	authorName: string
 	tags: string[]
 	createdAt: Date

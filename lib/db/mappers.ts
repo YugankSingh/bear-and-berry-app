@@ -7,6 +7,7 @@ import type {
 	OrganizationDocument,
 	UserDocument,
 } from "@/lib/db/documents"
+import { estimateReadTime } from "@/lib/cms/read-time"
 import type { BlogPostRecord } from "@/types/cms"
 import { resolveAccessStatus, resolveInviteState } from "@/lib/auth/access"
 import { resolvePermissions } from "@/lib/auth/permissions"
@@ -184,8 +185,10 @@ export function mapBlogPost(doc: BlogPostDocument): BlogPostRecord {
 		slug: doc.slug,
 		title: doc.title,
 		description: doc.description,
+		metaTitle: doc.metaTitle?.trim() || doc.title,
+		metaDescription: doc.metaDescription?.trim() || doc.description,
 		category: doc.category,
-		readTime: doc.readTime,
+		readTime: estimateReadTime(doc.content),
 		status: doc.status,
 		publishedAt: doc.publishedAt ? toIso(doc.publishedAt) : null,
 		content: doc.content,
