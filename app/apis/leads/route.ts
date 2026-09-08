@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getEnv, isProductionLike } from "@/lib/env"
+import { getLandingKey, isProductionLike } from "@/lib/env"
 import { leadIngestSchema } from "@/lib/validations/lead"
 import { createLead, listLeads } from "@/lib/repositories/leads"
 import { notifyLeadIngest } from "@/lib/leads/notify"
@@ -10,13 +10,12 @@ import { handleApiError, readJson } from "@/lib/api/guard"
 import { withCors } from "@/lib/api/cors"
 
 function hasValidIngestKey(request: Request): boolean {
-	const env = getEnv()
-	const expected = env.LEADS_INGEST_API_KEY
+	const expected = getLandingKey()
 	if (!expected) {
 		return !isProductionLike()
 	}
 
-	const headerKey = request.headers.get("x-api-key")
+	const headerKey = request.headers.get("x-landing-key") ?? request.headers.get("x-api-key")
 	const bearer = request.headers.get("authorization")
 	const token = bearer?.startsWith("Bearer ") ? bearer.slice(7) : null
 	return headerKey === expected || token === expected

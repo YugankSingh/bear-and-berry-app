@@ -25,6 +25,7 @@ const PERMISSION_CAPABILITY: Record<Permission, { resource: GrantResource; actio
 	"leads:read": { resource: "leads", action: "view" },
 	"leads:write": { resource: "leads", action: "edit" },
 	"leads:delete": { resource: "leads", action: "delete" },
+	"leads:notify": { resource: "leads", action: "grant" },
 	"machines:read": { resource: "machines", action: "view" },
 	"machines:write": { resource: "machines", action: "edit" },
 	"locations:read": { resource: "locations", action: "view" },
@@ -49,7 +50,7 @@ const PERMISSION_CAPABILITY: Record<Permission, { resource: GrantResource; actio
 
 const ACTION_TO_PERMISSION: Partial<Record<GrantResource, Partial<Record<GrantAction, Permission>>>> = {
 	dashboard: { view: "dashboard:read" },
-	leads: { view: "leads:read", edit: "leads:write", delete: "leads:delete" },
+	leads: { view: "leads:read", edit: "leads:write", delete: "leads:delete", grant: "leads:notify" },
 	machines: { view: "machines:read", edit: "machines:write" },
 	locations: { view: "locations:read", edit: "locations:write" },
 	inventory: { view: "inventory:read", edit: "inventory:write" },

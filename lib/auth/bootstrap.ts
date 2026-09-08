@@ -20,7 +20,6 @@ export async function bootstrapFirstAdmin(input: {
 		return null
 	}
 
-	const env = getEnv()
 	const labs = await findOrganizationBySlug(VENDFORGE_LABS_SLUG)
 	if (!labs) {
 		return null
@@ -32,7 +31,7 @@ export async function bootstrapFirstAdmin(input: {
 	}
 
 	await createUser({
-		name: input.name?.trim() || env.SEED_ADMIN_NAME,
+		name: input.name?.trim() || input.email.split("@")[0] || "Admin",
 		email: input.email,
 		password: input.password,
 		role: adminRole.slug,

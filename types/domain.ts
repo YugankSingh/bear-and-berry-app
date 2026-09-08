@@ -30,6 +30,7 @@ export const PERMISSIONS = [
 	"leads:read",
 	"leads:write",
 	"leads:delete",
+	"leads:notify",
 	"machines:read",
 	"machines:write",
 	"locations:read",
@@ -157,6 +158,14 @@ export type SessionUser = {
 	accessibleOrgs: AccessibleOrg[]
 	activeOrgSlug: string
 	canAccessAdmin: boolean
+}
+
+export type LeadRecipientRecord = {
+	id: string
+	email: string
+	tags: string[]
+	createdAt: string
+	updatedAt: string
 }
 
 export type LeadRecord = {

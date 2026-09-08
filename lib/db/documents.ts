@@ -152,3 +152,11 @@ export type BlogPostDocument = {
 	createdAt: Date
 	updatedAt: Date
 }
+
+export type LeadRecipientDocument = {
+	_id: ObjectId
+	email: string
+	tags: string[]
+	createdAt: Date
+	updatedAt: Date
+}

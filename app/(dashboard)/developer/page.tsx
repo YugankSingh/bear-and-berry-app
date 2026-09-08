@@ -11,14 +11,13 @@ export default function DeveloperPage() {
 	const rows = [
 		{ label: "APP_ENV", value: diagnostics.appEnv },
 		{ label: "Database", value: diagnostics.database },
-		{ label: "App URL", value: diagnostics.appUrl },
-		{ label: "Landing site", value: diagnostics.landingSiteUrl },
+		{ label: "Self URL", value: diagnostics.selfUrl },
+		{ label: "Landing URL", value: diagnostics.landingUrl },
 		{ label: "Session TTL", value: `${diagnostics.sessionTtlDays} days` },
 		{ label: "Invite TTL", value: `${diagnostics.inviteTtlDays} days` },
 		{ label: "SMTP", value: diagnostics.smtpConfigured ? "Configured" : "Not configured" },
 		{ label: "SMTP host", value: `${diagnostics.smtpHost}:${diagnostics.smtpPort}` },
 		{ label: "CORS origins", value: diagnostics.corsOrigins.join(", ") || "—" },
-		{ label: "Demo data", value: diagnostics.demoData ? "Enabled" : "Disabled" },
 	]
 
 	return (

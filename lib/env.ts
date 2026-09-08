@@ -3,36 +3,24 @@ import { APP_ENVIRONMENTS, type AppEnvironment } from "@/types/domain"
 
 const envSchema = z.object({
 	APP_ENV: z.enum(APP_ENVIRONMENTS).default("development"),
-	AUTH_URL: z.string().url().optional(),
+	SELF_URL: z.string().url().optional(),
+	LANDING_URL: z.string().url().optional(),
+	LANDING_KEY: z.string().min(8).optional(),
 	AUTH_SECRET: z.string().min(32).optional(),
 	SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 	INVITE_TTL_DAYS: z.coerce.number().int().positive().default(7),
 	MONGODB_URI: z.string().min(1).optional(),
-	MONGODB_DB_NAME: z.string().min(1).optional(),
-	LEADS_INGEST_API_KEY: z.string().min(8).optional(),
-	LANDING_SITE_URL: z.string().url().optional(),
-	LANDING_REVALIDATE_SECRET: z.string().min(16).optional(),
-	CORS_ORIGINS: z.string().optional(),
-	SEED_ADMIN_NAME: z.string().default("Bear & Berry Admin"),
 	SEED_ADMIN_EMAIL: z.string().email().optional(),
-	SEED_ADMIN_PASSWORD: z.string().min(8).optional(),
-	SEED_DEMO_DATA: z
-		.enum(["true", "false"])
-		.optional()
-		.transform((value) => value !== "false"),
 	SMTP_EMAIL: z.string().optional(),
 	SMTP_PASSWORD: z.string().optional(),
 	SMTP_HOST: z.string().default("smtpout.secureserver.net"),
 	SMTP_PORT: z.coerce.number().int().positive().default(465),
-	SMTP_TEAM_RECIPIENTS: z.string().optional(),
 })
 
 export type AppEnv = z.infer<typeof envSchema> & {
 	APP_ENV: AppEnvironment
 }
 
-// Local development and staging share one database for now.
-// Production stays isolated.
 const DATABASE_BY_ENV: Record<AppEnvironment, string> = {
 	development: "bear_and_berry_staging",
 	staging: "bear_and_berry_staging",
@@ -41,39 +29,32 @@ const DATABASE_BY_ENV: Record<AppEnvironment, string> = {
 
 let cached: AppEnv | null = null
 
+function emptyToUndefined(value: string | undefined): string | undefined {
+	if (!value || value.trim().length === 0) {
+		return undefined
+	}
+	return value
+}
+
 export function getEnv(): AppEnv {
 	if (cached) {
 		return cached
 	}
 
-	const emptyToUndefined = (value: string | undefined): string | undefined => {
-		if (!value || value.trim().length === 0) {
-			return undefined
-		}
-		return value
-	}
-
 	const parsed = envSchema.safeParse({
 		APP_ENV: process.env.APP_ENV,
-		AUTH_URL: emptyToUndefined(process.env.AUTH_URL),
+		SELF_URL: emptyToUndefined(process.env.SELF_URL),
+		LANDING_URL: emptyToUndefined(process.env.LANDING_URL),
+		LANDING_KEY: emptyToUndefined(process.env.LANDING_KEY),
 		AUTH_SECRET: emptyToUndefined(process.env.AUTH_SECRET),
 		SESSION_TTL_DAYS: process.env.SESSION_TTL_DAYS,
 		INVITE_TTL_DAYS: process.env.INVITE_TTL_DAYS,
 		MONGODB_URI: emptyToUndefined(process.env.MONGODB_URI),
-		MONGODB_DB_NAME: emptyToUndefined(process.env.MONGODB_DB_NAME),
-		LEADS_INGEST_API_KEY: emptyToUndefined(process.env.LEADS_INGEST_API_KEY),
-		LANDING_SITE_URL: emptyToUndefined(process.env.LANDING_SITE_URL),
-		LANDING_REVALIDATE_SECRET: emptyToUndefined(process.env.LANDING_REVALIDATE_SECRET),
-		CORS_ORIGINS: emptyToUndefined(process.env.CORS_ORIGINS),
-		SEED_ADMIN_NAME: process.env.SEED_ADMIN_NAME,
 		SEED_ADMIN_EMAIL: emptyToUndefined(process.env.SEED_ADMIN_EMAIL),
-		SEED_ADMIN_PASSWORD: emptyToUndefined(process.env.SEED_ADMIN_PASSWORD),
-		SEED_DEMO_DATA: process.env.SEED_DEMO_DATA,
 		SMTP_EMAIL: emptyToUndefined(process.env.SMTP_EMAIL),
 		SMTP_PASSWORD: emptyToUndefined(process.env.SMTP_PASSWORD),
 		SMTP_HOST: process.env.SMTP_HOST,
 		SMTP_PORT: process.env.SMTP_PORT,
-		SMTP_TEAM_RECIPIENTS: emptyToUndefined(process.env.SMTP_TEAM_RECIPIENTS),
 	})
 
 	if (!parsed.success) {
@@ -102,12 +83,23 @@ export function getMongoUri(): string {
 }
 
 export function getMongoDbName(): string {
-	const env = getEnv()
-	return env.MONGODB_DB_NAME ?? DATABASE_BY_ENV[env.APP_ENV]
+	return DATABASE_BY_ENV[getEnv().APP_ENV]
+}
+
+export function getSelfUrl(): string {
+	return getEnv().SELF_URL ?? "http://localhost:3001"
 }
 
 export function getAppUrl(): string {
-	return getEnv().AUTH_URL ?? "http://localhost:3001"
+	return getSelfUrl()
+}
+
+export function getLandingUrl(): string {
+	return getEnv().LANDING_URL ?? "http://localhost:3000"
+}
+
+export function getLandingKey(): string | undefined {
+	return getEnv().LANDING_KEY
 }
 
 export function getInviteTtlDays(): number {
@@ -122,53 +114,41 @@ export function getAuthSecret(): string {
 	return secret
 }
 
-export function getCorsOrigins(): string[] {
-	const raw = getEnv().CORS_ORIGINS
-	if (!raw) {
-		return []
+function originFromUrl(value: string): string | null {
+	try {
+		return new URL(value).origin
+	} catch {
+		return null
 	}
-	return raw
-		.split(",")
-		.map((origin) => origin.trim())
-		.filter((origin) => origin.length > 0)
+}
+
+export function getCorsOrigins(): string[] {
+	return [...new Set([originFromUrl(getSelfUrl()), originFromUrl(getLandingUrl())].filter((origin): origin is string => Boolean(origin)))]
 }
 
 export function getDeveloperDiagnostics(): {
 	appEnv: AppEnvironment
 	database: string
-	appUrl: string
-	landingSiteUrl: string
+	selfUrl: string
+	landingUrl: string
 	sessionTtlDays: number
 	inviteTtlDays: number
 	smtpHost: string
 	smtpPort: number
 	smtpConfigured: boolean
 	corsOrigins: string[]
-	demoData: boolean
 } {
 	const env = getEnv()
 	return {
 		appEnv: env.APP_ENV,
 		database: getMongoDbName(),
-		appUrl: getAppUrl(),
-		landingSiteUrl: env.LANDING_SITE_URL ?? "—",
+		selfUrl: getSelfUrl(),
+		landingUrl: getLandingUrl(),
 		sessionTtlDays: env.SESSION_TTL_DAYS,
 		inviteTtlDays: env.INVITE_TTL_DAYS,
 		smtpHost: env.SMTP_HOST,
 		smtpPort: env.SMTP_PORT,
 		smtpConfigured: Boolean(env.SMTP_EMAIL && env.SMTP_PASSWORD),
 		corsOrigins: getCorsOrigins(),
-		demoData: Boolean(env.SEED_DEMO_DATA),
 	}
-}
-
-export function getTeamRecipients(): string[] {
-	const raw = getEnv().SMTP_TEAM_RECIPIENTS
-	if (!raw) {
-		return ["yuganksingh05@gmail.com", "badbudarsingh@gmail.com"]
-	}
-	return raw
-		.split(",")
-		.map((email) => email.trim())
-		.filter((email) => email.length > 0)
 }

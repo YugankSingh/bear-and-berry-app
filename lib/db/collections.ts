@@ -7,6 +7,7 @@ import type {
 	LocationDocument,
 	MachineDocument,
 	OrganizationDocument,
+	LeadRecipientDocument,
 	PermissionDocument,
 	RoleDocument,
 	UserDocument,
@@ -20,6 +21,11 @@ export async function usersCollection(): Promise<Collection<UserDocument>> {
 export async function leadsCollection(): Promise<Collection<LeadDocument>> {
 	const db = await getDb()
 	return db.collection<LeadDocument>("leads")
+}
+
+export async function leadRecipientsCollection(): Promise<Collection<LeadRecipientDocument>> {
+	const db = await getDb()
+	return db.collection<LeadRecipientDocument>("lead_recipients")
 }
 
 export async function locationsCollection(): Promise<Collection<LocationDocument>> {
@@ -58,9 +64,10 @@ export async function permissionsCollection(): Promise<Collection<PermissionDocu
 }
 
 export async function ensureIndexes(): Promise<void> {
-	const [users, leads, machines, locations, inventory, orgs, blogs, roles, permissions] = await Promise.all([
+	const [users, leads, recipients, machines, locations, inventory, orgs, blogs, roles, permissions] = await Promise.all([
 		usersCollection(),
 		leadsCollection(),
+		leadRecipientsCollection(),
 		machinesCollection(),
 		locationsCollection(),
 		inventoryCollection(),
@@ -77,6 +84,7 @@ export async function ensureIndexes(): Promise<void> {
 		permissions.createIndex({ key: 1 }, { unique: true }),
 		leads.createIndex({ createdAt: -1 }),
 		leads.createIndex({ email: 1, createdAt: -1 }),
+		recipients.createIndex({ email: 1 }, { unique: true }),
 		machines.createIndex({ serialNumber: 1 }, { unique: true }),
 		machines.createIndex({ path: 1 }),
 		locations.createIndex({ path: 1 }),

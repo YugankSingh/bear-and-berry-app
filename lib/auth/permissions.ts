@@ -20,6 +20,7 @@ export const PERMISSION_META: Record<Permission, { name: string; group: string }
 	"leads:read": { name: "View leads", group: "leads" },
 	"leads:write": { name: "Edit leads", group: "leads" },
 	"leads:delete": { name: "Delete leads", group: "leads" },
+	"leads:notify": { name: "Edit lead notification emails", group: "leads" },
 	"machines:read": { name: "View machines", group: "fleet" },
 	"machines:write": { name: "Edit machines", group: "fleet" },
 	"locations:read": { name: "View locations", group: "fleet" },

@@ -1,30 +1,32 @@
 import { sendMail } from "@/lib/mail/send"
-import { getTeamRecipients } from "@/lib/env"
+import { listLeadRecipientEmails } from "@/lib/repositories/lead-recipients"
 import { intentTitle } from "@/lib/validations/lead"
 import type { LeadRecord } from "@/types/domain"
 
 export async function notifyLeadIngest(lead: LeadRecord): Promise<void> {
 	const title = intentTitle(lead.intent)
-	const recipients = getTeamRecipients()
+	const recipients = await listLeadRecipientEmails()
 
-	await sendMail({
-		to: recipients.join(", "),
-		subject: `Bear & Berry — ${title} from ${lead.name ?? lead.email}`,
-		text: [
-			`New contact request stored in the operator app`,
-			``,
-			`Intent:            ${title}`,
-			`Name:              ${lead.name ?? "—"}`,
-			`Business / Org:    ${lead.organization ?? "—"}`,
-			`Location & City:   ${lead.location ?? "—"}`,
-			`Daily Footfall:    ${lead.footfall ?? "—"}`,
-			`Phone:             ${lead.phone ?? "—"}`,
-			`Timeline:          ${lead.timeline ?? "—"}`,
-			`Operator Context:  ${lead.operatorContext ?? "—"}`,
-			`Message:           ${lead.message ?? "—"}`,
-			`Email:             ${lead.email}`,
-		].join("\n"),
-	})
+	if (recipients.length > 0) {
+		await sendMail({
+			to: recipients.join(", "),
+			subject: `Bear & Berry — ${title} from ${lead.name ?? lead.email}`,
+			text: [
+				`New contact request stored in the operator app`,
+				``,
+				`Intent:            ${title}`,
+				`Name:              ${lead.name ?? "—"}`,
+				`Business / Org:    ${lead.organization ?? "—"}`,
+				`Location & City:   ${lead.location ?? "—"}`,
+				`Daily Footfall:    ${lead.footfall ?? "—"}`,
+				`Phone:             ${lead.phone ?? "—"}`,
+				`Timeline:          ${lead.timeline ?? "—"}`,
+				`Operator Context:  ${lead.operatorContext ?? "—"}`,
+				`Message:           ${lead.message ?? "—"}`,
+				`Email:             ${lead.email}`,
+			].join("\n"),
+		})
+	}
 
 	await sendMail({
 		to: lead.email,

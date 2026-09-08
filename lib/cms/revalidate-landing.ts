@@ -1,4 +1,4 @@
-import { getEnv, isProductionLike } from "@/lib/env"
+import { getEnv, getLandingUrl, isProductionLike } from "@/lib/env"
 
 function uniqueSlugs(slugs: Array<string | null | undefined>): string[] {
 	return [...new Set(slugs.filter((slug): slug is string => Boolean(slug && slug.length > 0)))]
@@ -7,14 +7,13 @@ function uniqueSlugs(slugs: Array<string | null | undefined>): string[] {
 export async function revalidateLandingBlog(
 	slugs: Array<string | null | undefined>,
 ): Promise<void> {
-	const env = getEnv()
-	const siteUrl = env.LANDING_SITE_URL
-	const secret = env.LANDING_REVALIDATE_SECRET
+	const siteUrl = getLandingUrl()
+	const secret = getEnv().LANDING_KEY
 	const paths = uniqueSlugs(slugs)
 
-	if (!siteUrl || !secret) {
+	if (!secret) {
 		if (isProductionLike()) {
-			console.warn("landing revalidate skipped: LANDING_SITE_URL or LANDING_REVALIDATE_SECRET is unset")
+			console.warn("landing revalidate skipped: LANDING_KEY is unset")
 		}
 		return
 	}
@@ -24,6 +23,7 @@ export async function revalidateLandingBlog(
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
+				"x-landing-key": secret,
 				"x-revalidate-secret": secret,
 			},
 			body: JSON.stringify({ slugs: paths }),

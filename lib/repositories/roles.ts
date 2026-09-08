@@ -180,4 +180,9 @@ export async function ensureRbacCatalog(): Promise<void> {
 		}
 		await roles.insertOne(doc as RoleDocument)
 	}
+
+	await roles.updateMany(
+		{ slug: { $in: ["super_admin", "admin"] } },
+		{ $addToSet: { permissions: "leads:notify" }, $set: { updatedAt: now } },
+	)
 }
