@@ -11,12 +11,14 @@
 # testing
 /coverage
 
-# next.js
+# next.js / build
 /.next/
 /out/
-
-# production
 /build
+/dist
+.turbo
+*.tsbuildinfo
+next-env.d.ts
 
 # misc
 .DS_Store
@@ -28,15 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# env files — keep local copies, never commit
 .env
+.env.local
+.env.staging
+.env.prod
 .env.*
 !.env.example
 !sample.env
 
 # vercel
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
