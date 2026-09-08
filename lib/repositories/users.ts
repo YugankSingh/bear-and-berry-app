@@ -130,7 +130,6 @@ export async function createUser(input: UserWriteInput): Promise<UserRecord> {
 		}),
 		emailVerified: input.emailVerified ?? false,
 		passwordReady,
-		inviteTokenHash: input.inviteTokenHash ?? null,
 		inviteExpiresAt: input.inviteExpiresAt ?? null,
 		inviteAcceptedAt: input.inviteAcceptedAt ?? null,
 		extraPermissions: normalizePermissions(input.extraPermissions),
@@ -148,6 +147,7 @@ export async function createUser(input: UserWriteInput): Promise<UserRecord> {
 		deletedAt: null,
 		createdAt: now,
 		updatedAt: now,
+		...(input.inviteTokenHash ? { inviteTokenHash: input.inviteTokenHash } : {}),
 	}
 	const result = await users.insertOne(doc as UserDocument)
 	return toUserRecord({ ...doc, _id: result.insertedId })
@@ -162,6 +162,7 @@ export async function updateUser(id: string, input: UserPatchInput): Promise<Use
 	const $set: Partial<UserDocument> = {
 		updatedAt: new Date(),
 	}
+	const $unset: Record<string, ""> = {}
 
 	if (input.name !== undefined) $set.name = input.name
 	if (input.role !== undefined) $set.role = input.role
@@ -175,7 +176,13 @@ export async function updateUser(id: string, input: UserPatchInput): Promise<Use
 	if (input.accessStatus !== undefined) $set.accessStatus = input.accessStatus
 	if (input.emailVerified !== undefined) $set.emailVerified = input.emailVerified
 	if (input.passwordReady !== undefined) $set.passwordReady = input.passwordReady
-	if (input.inviteTokenHash !== undefined) $set.inviteTokenHash = input.inviteTokenHash
+	if (input.inviteTokenHash !== undefined) {
+		if (input.inviteTokenHash) {
+			$set.inviteTokenHash = input.inviteTokenHash
+		} else {
+			$unset.inviteTokenHash = ""
+		}
+	}
 	if (input.inviteExpiresAt !== undefined) $set.inviteExpiresAt = input.inviteExpiresAt
 	if (input.inviteAcceptedAt !== undefined) $set.inviteAcceptedAt = input.inviteAcceptedAt
 	if (input.emailOtpHash !== undefined) $set.emailOtpHash = input.emailOtpHash
@@ -192,9 +199,14 @@ export async function updateUser(id: string, input: UserPatchInput): Promise<Use
 		$set.passwordReady = true
 	}
 
+	const update: { $set: Partial<UserDocument>; $unset?: Record<string, ""> } = { $set }
+	if (Object.keys($unset).length > 0) {
+		update.$unset = $unset
+	}
+
 	const result = await users.findOneAndUpdate(
 		{ _id: new ObjectId(id) },
-		{ $set },
+		update,
 		{ returnDocument: "after" },
 	)
 
@@ -214,12 +226,12 @@ export async function softDeleteUser(id: string): Promise<UserRecord | null> {
 			$set: {
 				deletedAt: now,
 				isActive: false,
-				inviteTokenHash: null,
 				inviteExpiresAt: null,
 				emailOtpHash: null,
 				emailOtpExpiresAt: null,
 				updatedAt: now,
 			},
+			$unset: { inviteTokenHash: "" },
 		},
 		{ returnDocument: "after" },
 	)

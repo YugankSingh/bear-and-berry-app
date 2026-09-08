@@ -77,9 +77,10 @@ export async function ensureIndexes(): Promise<void> {
 		permissionsCollection(),
 	])
 
+	await ensureInviteTokenHashIndex(users)
+
 	await Promise.all([
 		users.createIndex({ email: 1 }, { unique: true }),
-		users.createIndex({ inviteTokenHash: 1 }, { unique: true, sparse: true }),
 		roles.createIndex({ slug: 1 }, { unique: true }),
 		permissions.createIndex({ key: 1 }, { unique: true }),
 		leads.createIndex({ createdAt: -1 }),
@@ -94,4 +95,28 @@ export async function ensureIndexes(): Promise<void> {
 		blogs.createIndex({ slug: 1 }, { unique: true }),
 		blogs.createIndex({ status: 1, publishedAt: -1 }),
 	])
+}
+
+async function ensureInviteTokenHashIndex(users: Collection<UserDocument>): Promise<void> {
+	await users.updateMany(
+		{ $or: [{ inviteTokenHash: null }, { inviteTokenHash: "" }] },
+		{ $unset: { inviteTokenHash: "" } },
+	)
+
+	const indexes = await users.indexes()
+	const current = indexes.find((index) => index.name === "inviteTokenHash_1")
+	const partialType = (current?.partialFilterExpression as { inviteTokenHash?: { $type?: string } } | undefined)
+		?.inviteTokenHash?.$type
+	if (current && partialType !== "string") {
+		await users.dropIndex("inviteTokenHash_1")
+	}
+
+	await users.createIndex(
+		{ inviteTokenHash: 1 },
+		{
+			unique: true,
+			name: "inviteTokenHash_1",
+			partialFilterExpression: { inviteTokenHash: { $type: "string" } },
+		},
+	)
 }
