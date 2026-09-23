@@ -168,6 +168,14 @@ export type LeadRecipientRecord = {
 	updatedAt: string
 }
 
+export type LeadComment = {
+	id: string
+	body: string
+	authorId: string
+	authorName: string
+	createdAt: string
+}
+
 export type LeadRecord = {
 	id: string
 	name: string | null
@@ -182,6 +190,8 @@ export type LeadRecord = {
 	intent: LeadIntent
 	source: LeadSource
 	status: LeadStatus
+	archivedAt: string | null
+	comments: LeadComment[]
 	createdAt: string
 	updatedAt: string
 }

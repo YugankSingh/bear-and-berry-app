@@ -85,6 +85,7 @@ export async function ensureIndexes(): Promise<void> {
 		permissions.createIndex({ key: 1 }, { unique: true }),
 		leads.createIndex({ createdAt: -1 }),
 		leads.createIndex({ email: 1, createdAt: -1 }),
+		leads.createIndex({ archivedAt: 1, createdAt: -1 }),
 		recipients.createIndex({ email: 1 }, { unique: true }),
 		machines.createIndex({ serialNumber: 1 }, { unique: true }),
 		machines.createIndex({ path: 1 }),

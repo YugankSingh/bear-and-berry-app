@@ -30,6 +30,23 @@ export const leadStatusSchema = z.object({
 	status: z.enum(LEAD_STATUSES),
 })
 
+export const leadUpdateSchema = z
+	.object({
+		status: z.enum(LEAD_STATUSES).optional(),
+		archived: z.boolean().optional(),
+	})
+	.refine((value) => value.status !== undefined || value.archived !== undefined, {
+		message: "Provide a status or archive change.",
+	})
+
+export const leadCommentCreateSchema = z.object({
+	body: z.string().trim().min(1).max(4000),
+})
+
+export const leadNotifySchema = z.object({
+	leadId: z.string().trim().min(1),
+})
+
 export function normalizeLeadPayload(input: LeadIngestInput | LeadIngestParsed) {
 	const intent = input.intent ?? "unit"
 	const organization = input.organization ?? input.business ?? null

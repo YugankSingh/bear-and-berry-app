@@ -115,6 +115,14 @@ export function mapLead(doc: LeadDocument): LeadRecord {
 		intent: doc.intent,
 		source: doc.source,
 		status: doc.status,
+		archivedAt: doc.archivedAt ? toIso(doc.archivedAt) : null,
+		comments: (doc.comments ?? []).map((comment) => ({
+			id: comment.id,
+			body: comment.body,
+			authorId: comment.authorId,
+			authorName: comment.authorName,
+			createdAt: toIso(comment.createdAt),
+		})),
 		createdAt: toIso(doc.createdAt),
 		updatedAt: toIso(doc.updatedAt),
 	}

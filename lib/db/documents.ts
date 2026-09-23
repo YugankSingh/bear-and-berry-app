@@ -76,6 +76,14 @@ export type PermissionDocument = {
 	updatedAt: Date
 }
 
+export type LeadCommentDocument = {
+	id: string
+	body: string
+	authorId: string
+	authorName: string
+	createdAt: Date
+}
+
 export type LeadDocument = {
 	_id: ObjectId
 	name: string | null
@@ -90,6 +98,8 @@ export type LeadDocument = {
 	intent: LeadIntent
 	source: LeadSource
 	status: LeadStatus
+	archivedAt?: Date | null
+	comments?: LeadCommentDocument[]
 	createdAt: Date
 	updatedAt: Date
 }

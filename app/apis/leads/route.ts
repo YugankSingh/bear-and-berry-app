@@ -1,25 +1,13 @@
 import { NextResponse } from "next/server"
-import { getLandingKey, isProductionLike } from "@/lib/env"
 import { leadIngestSchema } from "@/lib/validations/lead"
 import { createLead, listLeads } from "@/lib/repositories/leads"
-import { notifyLeadIngest } from "@/lib/leads/notify"
+import { hasValidIngestKey } from "@/lib/leads/ingest-key"
+import { scheduleLeadNotify } from "@/lib/leads/trigger-notify"
 import { requirePermission } from "@/lib/auth/require-auth"
 import { ensureDatabaseReady } from "@/lib/seed"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 import { withCors } from "@/lib/api/cors"
-
-function hasValidIngestKey(request: Request): boolean {
-	const expected = getLandingKey()
-	if (!expected) {
-		return !isProductionLike()
-	}
-
-	const headerKey = request.headers.get("x-landing-key") ?? request.headers.get("x-api-key")
-	const bearer = request.headers.get("authorization")
-	const token = bearer?.startsWith("Bearer ") ? bearer.slice(7) : null
-	return headerKey === expected || token === expected
-}
 
 export function OPTIONS(request: Request) {
 	return new NextResponse(null, {
@@ -28,10 +16,11 @@ export function OPTIONS(request: Request) {
 	})
 }
 
-export async function GET() {
+export async function GET(request: Request) {
 	try {
 		await requirePermission("leads:read")
-		const leads = await listLeads()
+		const archived = new URL(request.url).searchParams.get("archived") === "true"
+		const leads = await listLeads({ archived })
 		return ok({ leads })
 	} catch (error) {
 		return handleApiError(error)
@@ -62,7 +51,7 @@ export async function POST(request: Request) {
 		}
 
 		const lead = await createLead(parsed.data)
-		await notifyLeadIngest(lead)
+		scheduleLeadNotify(lead)
 		return ok({ lead }, 201, headers)
 	} catch (error) {
 		return handleApiError(error, request)

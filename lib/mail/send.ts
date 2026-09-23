@@ -4,6 +4,7 @@ type SendMailInput = {
 	to: string
 	subject: string
 	text: string
+	html?: string
 }
 
 export async function sendMail(input: SendMailInput): Promise<boolean> {
@@ -29,6 +30,7 @@ export async function sendMail(input: SendMailInput): Promise<boolean> {
 		to: input.to,
 		subject: input.subject,
 		text: input.text,
+		html: input.html,
 	})
 	return true
 }
