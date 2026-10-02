@@ -24,8 +24,12 @@ describe("permission catalog completeness", () => {
 		}
 	})
 
-	it("every permission maps to a capability", () => {
+	it("every permission maps to a capability except orgs:all (wildcard-only)", () => {
 		for (const permission of PERMISSIONS) {
+			if (permission === "orgs:all") {
+				expect(capabilityForPermission(permission)).toBeNull()
+				continue
+			}
 			expect(capabilityForPermission(permission)).toBeTruthy()
 		}
 	})
