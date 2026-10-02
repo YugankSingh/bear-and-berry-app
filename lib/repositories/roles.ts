@@ -8,8 +8,9 @@ import {
 	roleHasPermission,
 	sanitizeRolePermissions,
 } from "@/lib/auth/permissions"
-import { ORGS_ALL_PERMISSION, PERMISSIONS, SYSTEM_ADMIN_PERMISSION, type PermissionRecord, type RoleRecord } from "@/types/domain"
+import { ORGS_ALL_PERMISSION, PERMISSIONS, SYSTEM_ADMIN_PERMISSION, type Permission, type PermissionRecord, type RoleRecord } from "@/types/domain"
 import type { RoleDocument } from "@/lib/db/documents"
+import type { UpdateFilter } from "mongodb"
 
 export function mapRole(doc: RoleDocument): RoleRecord {
 	return {
@@ -181,8 +182,20 @@ export async function ensureRbacCatalog(): Promise<void> {
 		await roles.insertOne(doc as RoleDocument)
 	}
 
+	// Leads are a platform construct — keep them off org-scoped system roles.
+	const leadPermissions: Permission[] = ["leads:read", "leads:write", "leads:delete", "leads:notify"]
 	await roles.updateMany(
-		{ slug: { $in: ["super_admin", "admin"] } },
-		{ $addToSet: { permissions: "leads:notify" }, $set: { updatedAt: now } },
+		{ slug: { $in: ["admin", "operator", "viewer"] } },
+		{
+			$pull: { permissions: { $in: leadPermissions } },
+			$set: { updatedAt: now },
+		} as UpdateFilter<RoleDocument>,
+	)
+	await roles.updateOne(
+		{ slug: "super_admin" },
+		{
+			$addToSet: { permissions: { $each: leadPermissions } },
+			$set: { updatedAt: now },
+		} as UpdateFilter<RoleDocument>,
 	)
 }

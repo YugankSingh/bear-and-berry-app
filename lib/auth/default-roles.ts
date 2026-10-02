@@ -2,18 +2,26 @@ import { PERMISSIONS, type Permission } from "@/types/domain"
 
 const ALL_PERMISSIONS = [...PERMISSIONS]
 
+const PLATFORM_ONLY_PERMISSIONS = new Set<Permission>([
+	"leads:read",
+	"leads:write",
+	"leads:delete",
+	"leads:notify",
+	"cms:read",
+	"cms:write",
+	"settings:write",
+	"system:admin",
+	"orgs:all",
+	"roles:write",
+	"developer:read",
+])
+
 const ADMIN_PERMISSIONS = ALL_PERMISSIONS.filter(
-	(permission) =>
-		permission !== "settings:write" &&
-		permission !== "system:admin" &&
-		permission !== "orgs:all" &&
-		permission !== "roles:write" &&
-		permission !== "developer:read",
+	(permission) => !PLATFORM_ONLY_PERMISSIONS.has(permission),
 )
 
 const OPERATOR_PERMISSIONS: Permission[] = [
 	"dashboard:read",
-	"leads:read",
 	"machines:read",
 	"locations:read",
 	"inventory:read",
@@ -24,7 +32,6 @@ const OPERATOR_PERMISSIONS: Permission[] = [
 
 const VIEWER_PERMISSIONS: Permission[] = [
 	"dashboard:read",
-	"leads:read",
 	"machines:read",
 	"locations:read",
 	"inventory:read",

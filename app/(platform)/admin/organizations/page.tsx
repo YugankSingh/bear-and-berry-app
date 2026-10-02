@@ -2,13 +2,16 @@ import type { Metadata } from "next"
 import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { listOrganizations } from "@/lib/repositories/organizations"
 import { OrgOpenButton } from "@/components/admin/org-open-button"
+import { OrganizationTagsEditor } from "@/components/admin/organization-tags-editor"
+import { hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
 
 export const metadata: Metadata = {
 	title: "Organizations",
 }
 
 export default async function AdminOrganizationsPage() {
-	await getDashboardUser()
+	const user = await getDashboardUser()
+	const canEditTags = isSystemAdmin(user) || hasPermission(user, "orgs:all")
 	let organizations = [] as Awaited<ReturnType<typeof listOrganizations>>
 	try {
 		organizations = await listOrganizations()
@@ -40,8 +43,12 @@ export default async function AdminOrganizationsPage() {
 									<p className="mt-1 text-[12px] text-[#8C8C8C]">{org.slug}</p>
 								</td>
 								<td className="px-6 py-5 text-[13px] text-[#8C8C8C]">{org.kind}</td>
-								<td className="px-6 py-5 text-[13px] text-[#8C8C8C]">
-									{org.tags.length > 0 ? org.tags.join(", ") : "—"}
+								<td className="px-6 py-5">
+									<OrganizationTagsEditor
+										orgSlug={org.slug}
+										tags={org.tags}
+										canEdit={canEditTags}
+									/>
 								</td>
 								<td className="px-6 py-5 text-right">
 									<OrgOpenButton orgSlug={org.slug} />

@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { StatCard } from "@/components/ui/stat-card"
 import { Badge } from "@/components/ui/badge"
-import { countLeadsByStatus, listLeads } from "@/lib/repositories/leads"
 import { loadVisibleFleet, loadVisibleInventory } from "@/lib/auth/visible-fleet"
 import { formatNumber, formatDateTime, titleCase } from "@/lib/format"
 import { getAppEnvironment, getMongoDbName } from "@/lib/env"
@@ -16,38 +15,32 @@ export default async function OverviewPage() {
 	const user = await getDashboardUser()
 	let machineCounts: Record<MachineStatus, number> = { online: 0, offline: 0, maintenance: 0, error: 0 }
 	let cupsToday = 0
-	let leadCounts = { new: 0, contacted: 0, qualified: 0, closed: 0 }
 	let lowInventory = 0
 	let machines = [] as MachineRecord[]
-	let leads = [] as Awaited<ReturnType<typeof listLeads>>
 	let loadError: string | null = null
 
 	try {
-		const [fleet, slots, leadStatus, inbound] = await Promise.all([
-			loadVisibleFleet(user),
-			loadVisibleInventory(user),
-			countLeadsByStatus(),
-			listLeads(),
-		])
+		const [fleet, slots] = await Promise.all([loadVisibleFleet(user), loadVisibleInventory(user)])
 		machines = fleet.machines
 		for (const machine of machines) {
 			machineCounts[machine.status] += 1
 			cupsToday += machine.cupsToday
 		}
 		lowInventory = slots.filter((slot) => slot.capacity > 0 && slot.quantity / slot.capacity <= 0.25).length
-		leadCounts = leadStatus
-		leads = inbound
 	} catch (error) {
 		console.error(error)
 		loadError = "MongoDB is not reachable yet. Start the database and refresh."
 	}
 
 	const fleetSize = Object.values(machineCounts).reduce((sum, count) => sum + count, 0)
+	const attention = machines
+		.filter((machine) => machine.status === "offline" || machine.status === "error" || machine.status === "maintenance")
+		.slice(0, 4)
 
 	return (
 		<PageShell
 			title="Overview"
-			subtitle="Live fleet health, inbound demand, and the machines that need attention today."
+			subtitle="Live fleet health and the machines that need attention today."
 			permission="dashboard:read"
 		>
 			{loadError ? (
@@ -69,9 +62,9 @@ export default async function OverviewPage() {
 					detail="Fresh pours across the live fleet"
 				/>
 				<StatCard
-					eyebrow="New leads"
-					value={formatNumber(leadCounts.new)}
-					detail={`${formatNumber(leadCounts.qualified)} qualified · ${formatNumber(leadCounts.contacted)} in conversation`}
+					eyebrow="Offline / error"
+					value={formatNumber(machineCounts.offline + machineCounts.error)}
+					detail={`${formatNumber(machineCounts.offline)} offline · ${formatNumber(machineCounts.error)} error`}
 				/>
 				<StatCard
 					eyebrow="Low inventory"
@@ -120,20 +113,24 @@ export default async function OverviewPage() {
 
 				<section className="rounded-3xl bg-[#2D1C18] p-6 text-white">
 					<p className="mb-6 text-[11px] font-semibold uppercase tracking-[3px] text-white/40">
-						Latest inbound
+						Needs attention
 					</p>
 					<div className="space-y-5">
-						{leads.slice(0, 4).map((lead) => (
-							<div key={lead.id}>
-								<p className="text-[15px] font-medium">{lead.name ?? lead.email}</p>
+						{attention.map((machine) => (
+							<div key={machine.id}>
+								<p className="text-[15px] font-medium">{machine.name}</p>
 								<p className="mt-1 text-[13px] text-white/50">
-									{titleCase(lead.intent)} · {lead.location ?? "No city yet"}
+									{titleCase(machine.status)} · {machine.locationName ?? "Unassigned"}
 								</p>
-								<p className="mt-1 text-[12px] text-white/35">{formatDateTime(lead.createdAt)}</p>
+								<p className="mt-1 text-[12px] text-white/35">
+									{machine.lastHeartbeatAt
+										? `Last seen ${formatDateTime(machine.lastHeartbeatAt)}`
+										: "No heartbeat yet"}
+								</p>
 							</div>
 						))}
-						{leads.length === 0 ? (
-							<p className="text-[14px] text-white/50">No leads ingested yet.</p>
+						{attention.length === 0 ? (
+							<p className="text-[14px] text-white/50">Fleet looks healthy right now.</p>
 						) : null}
 					</div>
 					<p className="mt-10 text-[12px] text-white/35">
