@@ -2,13 +2,15 @@
   "name": "bear-and-berry-app",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev --port 3001",
-    "build": "next build",
-    "start": "next start --port 3001",
-    "lint": "eslint",
-    "seed": "tsx --tsconfig tsconfig.json scripts/seed.ts"
-  },
+	"scripts": {
+		"dev": "next dev --port 3001",
+		"build": "next build",
+		"start": "next start --port 3001",
+		"lint": "eslint",
+		"seed": "tsx --tsconfig tsconfig.json scripts/seed.ts",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
   "dependencies": {
     "bcryptjs": "^3.0.2",
     "jose": "^6.1.0",
@@ -30,6 +32,7 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "tsx": "^4.20.5",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   }
 }

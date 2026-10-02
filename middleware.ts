@@ -2,40 +2,12 @@ import { NextResponse, type NextRequest } from "next/server"
 import { jwtVerify } from "jose"
 import { hasDashboardAccess } from "@/lib/auth/access"
 import { ORGANIZATION_ROOT, ORG_HEADER, PATH_HEADER, WORKSPACE_COOKIE, parseOrganizationPath } from "@/lib/auth/org-path"
+import { isPublicPath, isWaitlistAllowedApi, SESSION_COOKIE } from "@/lib/auth/public-paths"
 import type { AccessStatus } from "@/types/domain"
-
-const SESSION_COOKIE = "bb_session"
-const PUBLIC_PATHS = [
-	"/login",
-	"/signup",
-	"/waitlist",
-	"/verify",
-	"/invite",
-	"/access-removed",
-	"/apis/health",
-	"/apis/leads",
-	"/apis/auth/login",
-	"/apis/auth/lookup",
-	"/apis/auth/signup",
-	"/apis/auth/verify-otp",
-	"/apis/auth/resend-otp",
-	"/apis/auth/accept-invite",
-	"/apis/auth/invite",
-	"/apis/auth/logout",
-	"/apis/public",
-]
-const WAITLIST_API_PATHS = ["/apis/auth/logout", "/apis/auth/me"]
 
 type SessionState =
 	| { valid: false }
 	| { valid: true; accessStatus: AccessStatus; canAccessAdmin: boolean; activeOrgSlug: string }
-
-function isPublicPath(pathname: string): boolean {
-	if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
-		return true
-	}
-	return pathname.startsWith("/_next") || pathname === "/favicon.ico"
-}
 
 function getSecret(): Uint8Array | null {
 	const secret = process.env.AUTH_SECRET
@@ -120,7 +92,7 @@ export async function middleware(request: NextRequest) {
 	if (session.valid) {
 		if (!hasDashboardAccess(session.accessStatus)) {
 			if (pathname.startsWith("/apis/")) {
-				if (WAITLIST_API_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))) {
+				if (isWaitlistAllowedApi(pathname)) {
 					return NextResponse.next()
 				}
 				return NextResponse.json(

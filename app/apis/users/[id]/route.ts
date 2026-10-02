@@ -9,6 +9,7 @@ import {
 	hasPermission,
 	isSystemAdmin,
 } from "@/lib/auth/permissions"
+import { authorizeUserPatch } from "@/lib/auth/user-patch-auth"
 import { resolveMembership } from "@/lib/auth/membership"
 import { permissionsFromGrants } from "@/lib/auth/compile-grants"
 import {
@@ -30,22 +31,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 		const actor = await requireDashboardSession()
 		const { id } = await context.params
 		const body = userPatchSchema.parse(await readJson(request))
-		const extraOnly =
-			(body.extraPermissions !== undefined || body.extraGrants !== undefined) &&
-			body.role === undefined &&
-			body.resourceAccess === undefined &&
-			body.membership === undefined &&
-			body.name === undefined &&
-			body.organization === undefined &&
-			body.tags === undefined &&
-			body.isActive === undefined &&
-			body.accessStatus === undefined
-		if (extraOnly) {
-			if (!hasPermission(actor, "users:grant") && !isSystemAdmin(actor)) {
-				throw new AuthError("You cannot grant extra permissions.", 403)
-			}
-		} else if (!hasPermission(actor, "users:write")) {
-			throw new AuthError("You do not have access to this resource.", 403)
+		const gate = authorizeUserPatch(actor, body)
+		if (!gate.ok) {
+			throw new AuthError(gate.error, gate.status)
 		}
 		const existing = await findUserById(id)
 		if (!existing || isUserRemoved(existing)) {

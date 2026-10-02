@@ -1,6 +1,7 @@
 import { verifyOtpSchema } from "@/lib/validations/auth"
 import { isUserLive, resolveAccessStatus } from "@/lib/auth/access"
 import { verifyHashedSecret } from "@/lib/auth/tokens"
+import { authorizeVerifyOtp } from "@/lib/auth/verify-otp-gate"
 import { setSessionCookie, toSessionUser } from "@/lib/auth/session"
 import { findUserByEmail, toUserRecord, updateUser } from "@/lib/repositories/users"
 import { ensureDatabaseReady } from "@/lib/seed"
@@ -15,19 +16,9 @@ export async function POST(request: Request) {
 		if (!isUserLive(user)) {
 			return fail("NOT_FOUND", "We could not find that account.", 404)
 		}
-		if (user.emailVerified) {
-			const session = await toSessionUser(user)
-			await setSessionCookie(session)
-			return ok({
-				user: await toUserRecord(user),
-				accessStatus: resolveAccessStatus(user.accessStatus),
-			})
-		}
-		if (!user.emailOtpExpiresAt || user.emailOtpExpiresAt.getTime() < Date.now()) {
-			return fail("UNAUTHORIZED", "That code has expired. Request a new one.", 401)
-		}
-		if (!verifyHashedSecret(body.otp, user.emailOtpHash)) {
-			return fail("UNAUTHORIZED", "That code does not match.", 401)
+		const gate = authorizeVerifyOtp(user, body.otp, verifyHashedSecret)
+		if (!gate.ok) {
+			return fail(gate.status === 409 ? "CONFLICT" : "UNAUTHORIZED", gate.error, gate.status)
 		}
 
 		const updated = await updateUser(user._id.toHexString(), {

@@ -3,14 +3,12 @@ import { toIso } from "@/lib/db/mappers"
 import { DEFAULT_ROLES } from "@/lib/auth/default-roles"
 import {
 	PERMISSION_META,
-	isOwnerRole,
 	normalizePermissions,
 	roleHasPermission,
 	sanitizeRolePermissions,
 } from "@/lib/auth/permissions"
-import { ORGS_ALL_PERMISSION, PERMISSIONS, SYSTEM_ADMIN_PERMISSION, type Permission, type PermissionRecord, type RoleRecord } from "@/types/domain"
+import { ORGS_ALL_PERMISSION, PERMISSIONS, SYSTEM_ADMIN_PERMISSION, type PermissionRecord, type RoleRecord } from "@/types/domain"
 import type { RoleDocument } from "@/lib/db/documents"
-import type { UpdateFilter } from "mongodb"
 
 export function mapRole(doc: RoleDocument): RoleRecord {
 	return {
@@ -147,26 +145,6 @@ export async function ensureRbacCatalog(): Promise<void> {
 	for (const seed of DEFAULT_ROLES) {
 		const existing = await roles.findOne({ slug: seed.slug })
 		if (existing) {
-			if (isOwnerRole(mapRole(existing))) {
-				await roles.updateOne(
-					{ slug: seed.slug },
-					{
-						$addToSet: { permissions: { $each: seed.permissions } },
-						$set: { updatedAt: now },
-					},
-				)
-			} else {
-				const current = mapRole(existing)
-				await roles.updateOne(
-					{ slug: seed.slug },
-					{
-						$set: {
-							permissions: sanitizeRolePermissions(current, current.permissions),
-							updatedAt: now,
-						},
-					},
-				)
-			}
 			continue
 		}
 		const doc: Omit<RoleDocument, "_id"> = {
@@ -181,21 +159,4 @@ export async function ensureRbacCatalog(): Promise<void> {
 		}
 		await roles.insertOne(doc as RoleDocument)
 	}
-
-	// Leads are a platform construct — keep them off org-scoped system roles.
-	const leadPermissions: Permission[] = ["leads:read", "leads:write", "leads:delete", "leads:notify"]
-	await roles.updateMany(
-		{ slug: { $in: ["admin", "operator", "viewer"] } },
-		{
-			$pull: { permissions: { $in: leadPermissions } },
-			$set: { updatedAt: now },
-		} as UpdateFilter<RoleDocument>,
-	)
-	await roles.updateOne(
-		{ slug: "super_admin" },
-		{
-			$addToSet: { permissions: { $each: leadPermissions } },
-			$set: { updatedAt: now },
-		} as UpdateFilter<RoleDocument>,
-	)
 }

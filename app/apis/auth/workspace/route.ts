@@ -35,6 +35,7 @@ export async function POST(request: Request) {
 			...user,
 			activeOrgSlug: orgSlug,
 			orgSlug: org?.slug ?? orgSlug,
+			orgId: org?.id ?? user.orgId,
 		}
 		await setWorkspaceCookie(orgSlug)
 		await setSessionCookie(next)

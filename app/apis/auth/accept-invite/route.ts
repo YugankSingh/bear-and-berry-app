@@ -1,5 +1,6 @@
 import { acceptInviteSchema } from "@/lib/validations/auth"
-import { isUserLive, resolveAccessStatus, resolveInviteState } from "@/lib/auth/access"
+import { resolveAccessStatus } from "@/lib/auth/access"
+import { authorizeAcceptInvite } from "@/lib/auth/accept-invite-gate"
 import { hashSecret } from "@/lib/auth/tokens"
 import { setSessionCookie, toSessionUser } from "@/lib/auth/session"
 import { findUserByInviteTokenHash, updateUser } from "@/lib/repositories/users"
@@ -12,24 +13,20 @@ export async function POST(request: Request) {
 		await ensureDatabaseReady()
 		const body = acceptInviteSchema.parse(await readJson(request))
 		const user = await findUserByInviteTokenHash(hashSecret(body.token))
-		if (!isUserLive(user)) {
-			return fail("NOT_FOUND", "This invitation is not valid.", 404)
+		const gate = authorizeAcceptInvite(user, Boolean(body.password))
+		if (!gate.ok) {
+			const code =
+				gate.status === 404
+					? "NOT_FOUND"
+					: gate.status === 401
+						? "UNAUTHORIZED"
+						: gate.status === 409
+							? "CONFLICT"
+							: "VALIDATION_ERROR"
+			return fail(code, gate.error, gate.status)
 		}
 
-		const inviteState = resolveInviteState(user)
-		if (inviteState === "expired") {
-			return fail("UNAUTHORIZED", "This invitation has expired. Ask an admin to send a new one.", 401)
-		}
-		if (inviteState !== "pending") {
-			return fail("CONFLICT", "This invitation has already been used.", 409)
-		}
-
-		const needsPassword = user.passwordReady === false
-		if (needsPassword && !body.password) {
-			return fail("VALIDATION_ERROR", "Choose a password to finish setting up your account.", 400)
-		}
-
-		const updated = await updateUser(user._id.toHexString(), {
+		const updated = await updateUser(user!._id.toHexString(), {
 			accessStatus: "invited",
 			emailVerified: true,
 			inviteAcceptedAt: new Date(),
@@ -43,7 +40,7 @@ export async function POST(request: Request) {
 		}
 
 		const accepted = {
-			...user,
+			...user!,
 			accessStatus: "invited" as const,
 			emailVerified: true,
 			passwordReady: true,

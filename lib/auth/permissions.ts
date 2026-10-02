@@ -212,8 +212,18 @@ export function canGrantAccessGrant(
 	if (isPlatformPermission(permission) || !isOrgBoundPermission(permission)) {
 		return hasAnyCapability(actor.grants, grant.resource, grant.action)
 	}
-	if (hasOrgWildcard(actor.grants) || grant.org === GRANT_WILDCARD) {
+	if (hasOrgWildcard(actor.grants)) {
 		return hasAnyCapability(actor.grants, grant.resource, grant.action)
+	}
+	if (grant.org === GRANT_WILDCARD) {
+		// Granting org:* requires the actor to already hold that capability on org:*.
+		return (actor.grants ?? []).some(
+			(owned) =>
+				owned.resource === grant.resource &&
+				owned.action === grant.action &&
+				owned.org === GRANT_WILDCARD &&
+				!owned.orgTag,
+		)
 	}
 	const orgTags = grant.org
 		? actor.accessibleOrgs?.find((item) => item.slug === grant.org)?.tags

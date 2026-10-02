@@ -105,6 +105,7 @@ export function applyWorkspaceCookie(
 		...user,
 		activeOrgSlug: org?.slug ?? workspace,
 		orgSlug: org?.slug ?? workspace,
+		orgId: org?.id ?? user.orgId,
 	}
 }
 
