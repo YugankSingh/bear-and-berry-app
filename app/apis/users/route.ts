@@ -5,7 +5,8 @@ import { listOrganizations } from "@/lib/repositories/organizations"
 import { requirePermission } from "@/lib/auth/require-auth"
 import { isUserRemoved, resolveAccessStatus } from "@/lib/auth/access"
 import { canGrantAccessGrants, hasPermission } from "@/lib/auth/permissions"
-import { issueInvite, prepareInviteToken, scheduleInviteEmail } from "@/lib/auth/invite"
+import { issueInvite, scheduleInviteEmail } from "@/lib/auth/invite"
+import { createInviteToken } from "@/lib/auth/tokens"
 import { resolveMembership } from "@/lib/auth/membership"
 import { canAssignRole, canManageUser, canSeeTeamMember, canGrantMemberships } from "@/lib/auth/team-access"
 import { fail, ok } from "@/lib/api/response"
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
 			})
 		}
 
-		const invite = prepareInviteToken()
+		const invite = createInviteToken()
 		const created = await createUser({
 			...assignment,
 			email: body.email,

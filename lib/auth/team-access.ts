@@ -1,4 +1,9 @@
-import { hasAllOrganizations, isSystemAdmin, isOwnerRole } from "@/lib/auth/permissions"
+import {
+	hasAllOrganizations,
+	hasUnrestrictedAccess,
+	isSystemAdmin,
+	isOwnerRole,
+} from "@/lib/auth/permissions"
 import {
 	GRANT_WILDCARD,
 	hasOrgWildcard,
@@ -7,11 +12,7 @@ import {
 } from "@/lib/auth/grants"
 import type { AccessibleOrg, RoleRecord, SessionUser, UserRecord } from "@/types/domain"
 
-export function hasUnrestrictedAccess(
-	user: Pick<SessionUser, "permissions" | "grants">,
-): boolean {
-	return isSystemAdmin(user) || hasAllOrganizations(user) || hasOrgWildcard(user.grants)
-}
+export { hasUnrestrictedAccess }
 
 export function canAssignRole(
 	actor: Pick<SessionUser, "roleRank" | "permissions" | "grants">,
@@ -43,7 +44,7 @@ export function inSameOrganization(
 	actor: Pick<SessionUser, "permissions" | "orgSlug" | "grants" | "accessibleOrgs" | "activeOrgSlug">,
 	target: Pick<UserRecord, "orgSlug" | "memberships" | "tags">,
 ): boolean {
-	if (hasAllOrganizations(actor) || isSystemAdmin(actor) || hasOrgWildcard(actor.grants)) {
+	if (hasUnrestrictedAccess(actor)) {
 		return true
 	}
 	const active = actor.activeOrgSlug || actor.orgSlug
@@ -97,7 +98,7 @@ export function canGrantMemberships(
 	if (memberships.length === 0) {
 		return true
 	}
-	if (isSystemAdmin(actor) || hasAllOrganizations(actor) || hasOrgWildcard(actor.grants)) {
+	if (hasUnrestrictedAccess(actor)) {
 		return memberships.every((membership) => membership.org !== GRANT_WILDCARD || hasOrgWildcard(actor.grants))
 	}
 	return memberships.every((membership) => membershipWithinActor(actor, membership, catalog))

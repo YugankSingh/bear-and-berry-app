@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb"
 import { inventoryCollection, locationsCollection, machinesCollection } from "@/lib/db/collections"
+import { orgSlugInFilter } from "@/lib/db/query"
 import { mapMachine } from "@/lib/db/mappers"
 import { joinScopePath } from "@/lib/auth/scope"
 import { orgSlugFromPath } from "@/lib/auth/fleet-access"
@@ -63,11 +64,7 @@ export async function findMachineById(id: string): Promise<MachineRecord | null>
 
 export async function listMachines(options: MachineListOptions = {}): Promise<MachineRecord[]> {
 	const machines = await machinesCollection()
-	const filter =
-		options.orgSlugs && options.orgSlugs.length > 0
-			? { orgSlug: { $in: options.orgSlugs } }
-			: {}
-	const docs = await machines.find(filter).sort({ name: 1 }).toArray()
+	const docs = await machines.find(orgSlugInFilter(options.orgSlugs)).sort({ name: 1 }).toArray()
 	return withLocations(docs)
 }
 

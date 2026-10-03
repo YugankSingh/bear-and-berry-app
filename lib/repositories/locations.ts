@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb"
 import { locationsCollection } from "@/lib/db/collections"
+import { orgSlugInFilter } from "@/lib/db/query"
 import { mapLocation } from "@/lib/db/mappers"
 import { joinScopePath } from "@/lib/auth/scope"
 import { orgSlugFromPath } from "@/lib/auth/fleet-access"
@@ -22,11 +23,7 @@ export async function findLocationById(id: string): Promise<LocationRecord | nul
 
 export async function listLocations(options: LocationListOptions = {}): Promise<LocationRecord[]> {
 	const locations = await locationsCollection()
-	const filter =
-		options.orgSlugs && options.orgSlugs.length > 0
-			? { orgSlug: { $in: options.orgSlugs } }
-			: {}
-	const docs = await locations.find(filter).sort({ name: 1 }).toArray()
+	const docs = await locations.find(orgSlugInFilter(options.orgSlugs)).sort({ name: 1 }).toArray()
 	return docs.map(mapLocation)
 }
 

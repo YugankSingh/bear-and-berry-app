@@ -8,34 +8,38 @@ export type InventoryListOptions = {
 	machineIds?: string[]
 }
 
+function toObjectIds(ids: string[]): ObjectId[] {
+	return ids.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id))
+}
+
+async function resolveSlot(doc: InventorySlotDocument): Promise<InventorySlotRecord> {
+	if (doc.machineName) {
+		return mapInventorySlot(doc)
+	}
+	const machines = await machinesCollection()
+	const machine = await machines.findOne({ _id: doc.machineId }, { projection: { name: 1 } })
+	return mapInventorySlot(doc, machine?.name)
+}
+
 export async function listInventory(options: InventoryListOptions = {}): Promise<InventorySlotRecord[]> {
 	const slots = await inventoryCollection()
 	const filter =
 		options.machineIds && options.machineIds.length > 0
-			? {
-					machineId: {
-						$in: options.machineIds
-							.filter((id) => ObjectId.isValid(id))
-							.map((id) => new ObjectId(id)),
-					},
-				}
+			? { machineId: { $in: toObjectIds(options.machineIds) } }
 			: {}
 	const docs = await slots.find(filter).sort({ machineId: 1, slotIndex: 1 }).toArray()
 
-	const missingNames = docs.filter((doc) => !doc.machineName)
-	if (missingNames.length === 0) {
+	const missing = docs.filter((doc) => !doc.machineName)
+	if (missing.length === 0) {
 		return docs.map((doc) => mapInventorySlot(doc))
 	}
 
-	// Back-compat for pre-migration slots without denormalized names.
 	const machines = await machinesCollection()
 	const machineDocs = await machines
-		.find({ _id: { $in: missingNames.map((doc) => doc.machineId) } })
+		.find({ _id: { $in: missing.map((doc) => doc.machineId) } }, { projection: { name: 1 } })
 		.toArray()
 	const names = new Map(machineDocs.map((machine) => [machine._id.toHexString(), machine.name]))
-	return docs.map((doc) =>
-		mapInventorySlot(doc, doc.machineName || names.get(doc.machineId.toHexString()) || "Unknown machine"),
-	)
+	return docs.map((doc) => mapInventorySlot(doc, names.get(doc.machineId.toHexString())))
 }
 
 export async function findInventoryById(id: string): Promise<InventorySlotRecord | null> {
@@ -44,15 +48,7 @@ export async function findInventoryById(id: string): Promise<InventorySlotRecord
 	}
 	const slots = await inventoryCollection()
 	const doc = await slots.findOne({ _id: new ObjectId(id) })
-	if (!doc) {
-		return null
-	}
-	if (doc.machineName) {
-		return mapInventorySlot(doc)
-	}
-	const machines = await machinesCollection()
-	const machine = await machines.findOne({ _id: doc.machineId })
-	return mapInventorySlot(doc, machine?.name ?? "Unknown machine")
+	return doc ? resolveSlot(doc) : null
 }
 
 export async function updateInventoryQuantity(
@@ -69,16 +65,7 @@ export async function updateInventoryQuantity(
 		{ $set: { quantity, updatedAt: new Date() } },
 		{ returnDocument: "after" },
 	)
-	if (!result) {
-		return null
-	}
-
-	if (result.machineName) {
-		return mapInventorySlot(result)
-	}
-	const machines = await machinesCollection()
-	const machine = await machines.findOne({ _id: result.machineId })
-	return mapInventorySlot(result, machine?.name ?? "Unknown machine")
+	return result ? resolveSlot(result) : null
 }
 
 export async function countLowInventory(threshold = 0.25): Promise<number> {

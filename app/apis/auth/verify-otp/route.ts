@@ -1,8 +1,8 @@
 import { verifyOtpSchema } from "@/lib/validations/auth"
-import { isUserLive, resolveAccessStatus } from "@/lib/auth/access"
+import { isUserLive } from "@/lib/auth/access"
 import { verifyHashedSecret } from "@/lib/auth/tokens"
 import { authorizeVerifyOtp } from "@/lib/auth/verify-otp-gate"
-import { hydrateAuthUser, setSessionCookie } from "@/lib/auth/session"
+import { establishSession } from "@/lib/auth/session"
 import { findUserByEmail, updateUser } from "@/lib/repositories/users"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
@@ -28,17 +28,16 @@ export async function POST(request: Request) {
 			return fail("SERVER_ERROR", "Could not verify your email.", 500)
 		}
 
-		const verified = {
+		const { record } = await establishSession({
 			...user,
 			emailVerified: true,
 			emailOtpHash: null,
 			emailOtpExpiresAt: null,
-		}
-		const { session } = await hydrateAuthUser(verified)
-		await setSessionCookie(session)
+		})
+
 		return ok({
 			user: updated,
-			accessStatus: resolveAccessStatus(verified.accessStatus),
+			accessStatus: record.accessStatus,
 		})
 	} catch (error) {
 		return handleApiError(error)

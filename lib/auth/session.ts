@@ -36,12 +36,8 @@ type SessionClaims = JWTPayload & {
 	roleRank?: number
 	orgId: string
 	orgSlug: string
-	tags: string[]
+	tags?: string[]
 	accessStatus?: string
-	/** Legacy fat-token fields — ignored when `grants` is present. */
-	permissions?: string[]
-	memberships?: unknown[]
-	extraGrants?: string[]
 	grants?: string[]
 	accessibleOrgs?: AccessibleOrg[]
 	activeOrgSlug?: string
@@ -52,8 +48,21 @@ function getSecretKey(): Uint8Array {
 	return new TextEncoder().encode(getAuthSecret())
 }
 
+function sessionCookieOptions(maxAgeSeconds: number) {
+	return {
+		httpOnly: true as const,
+		sameSite: "lax" as const,
+		secure: isProductionLike(),
+		path: "/",
+		maxAge: maxAgeSeconds,
+	}
+}
+
+function sessionTtlSeconds(): number {
+	return getEnv().SESSION_TTL_DAYS * 24 * 60 * 60
+}
+
 export async function createSessionToken(user: SessionUser): Promise<string> {
-	const ttlDays = getEnv().SESSION_TTL_DAYS
 	const grantKeys = user.grantKeys.length > 0 ? user.grantKeys : stringifyGrants(user.grants)
 
 	return new SignJWT({
@@ -74,15 +83,13 @@ export async function createSessionToken(user: SessionUser): Promise<string> {
 		.setProtectedHeader({ alg: "HS256", typ: "JWT" })
 		.setSubject(user.id)
 		.setIssuedAt()
-		.setExpirationTime(`${ttlDays}d`)
+		.setExpirationTime(`${getEnv().SESSION_TTL_DAYS}d`)
 		.sign(getSecretKey())
 }
 
 export async function readSessionToken(token: string): Promise<SessionUser | null> {
 	try {
-		const { payload } = await jwtVerify(token, getSecretKey(), {
-			algorithms: ["HS256"],
-		})
+		const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ["HS256"] })
 		const claims = payload as SessionClaims
 		if (!claims.sub || !claims.email || !claims.name || !claims.orgId || !claims.orgSlug) {
 			return null
@@ -92,17 +99,13 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
 		}
 
 		const grantKeys = Array.isArray(claims.grants) ? claims.grants : []
-		const grants = parseGrants(grantKeys)
-		// Slim tokens must carry compiled grants. Legacy fat tokens without grants
-		// are rejected so the client re-authenticates into the new shape.
 		if (grantKeys.length === 0) {
 			return null
 		}
 
+		const grants = parseGrants(grantKeys)
 		const permissions = permissionsFromGrants(grants)
 		const accessibleOrgs = normalizeAccessibleOrgs(claims.accessibleOrgs)
-		const canAccessAdmin =
-			Boolean(claims.canAccessAdmin) || canAccessAdminWorkspace({ grants, permissions })
 
 		return {
 			id: claims.sub,
@@ -122,7 +125,8 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
 			permissions,
 			accessibleOrgs,
 			activeOrgSlug: typeof claims.activeOrgSlug === "string" ? claims.activeOrgSlug : "",
-			canAccessAdmin,
+			canAccessAdmin:
+				Boolean(claims.canAccessAdmin) || canAccessAdminWorkspace({ grants, permissions }),
 		}
 	} catch {
 		return null
@@ -147,19 +151,15 @@ async function loadSessionUser(): Promise<SessionUser | null> {
 	}
 
 	const request = await readRequestWorkspace()
-
 	if (request?.path === ORGANIZATION_ROOT || request?.path === `${ORGANIZATION_ROOT}/`) {
 		return { ...session, activeOrgSlug: "" }
 	}
-
 	if (request?.path.startsWith("/admin")) {
 		return applyWorkspaceCookie(session, ADMIN_WORKSPACE)
 	}
-
 	if (request?.orgId) {
 		return applyWorkspaceCookie(session, request.orgId)
 	}
-
 	return applyWorkspaceCookie(session, store.get(WORKSPACE_COOKIE)?.value)
 }
 
@@ -167,45 +167,35 @@ async function loadSessionUser(): Promise<SessionUser | null> {
 export const getSessionUser = cache(loadSessionUser)
 
 export async function setSessionCookie(user: SessionUser): Promise<void> {
-	const token = await createSessionToken(user)
 	const store = await cookies()
-	const ttlDays = getEnv().SESSION_TTL_DAYS
+	const options = sessionCookieOptions(sessionTtlSeconds())
 	const workspace = user.activeOrgSlug || (user.canAccessAdmin ? ADMIN_WORKSPACE : "")
 
-	store.set(SESSION_COOKIE, token, {
-		httpOnly: true,
-		sameSite: "lax",
-		secure: isProductionLike(),
-		path: "/",
-		maxAge: ttlDays * 24 * 60 * 60,
-	})
-
+	store.set(SESSION_COOKIE, await createSessionToken(user), options)
 	if (workspace) {
-		store.set(WORKSPACE_COOKIE, workspace, {
-			httpOnly: true,
-			sameSite: "lax",
-			secure: isProductionLike(),
-			path: "/",
-			maxAge: ttlDays * 24 * 60 * 60,
-		})
+		store.set(WORKSPACE_COOKIE, workspace, options)
 	}
 }
 
 export async function setWorkspaceCookie(workspace: string): Promise<void> {
 	const store = await cookies()
-	store.set(WORKSPACE_COOKIE, workspace, {
-		httpOnly: true,
-		sameSite: "lax",
-		secure: isProductionLike(),
-		path: "/",
-		maxAge: getEnv().SESSION_TTL_DAYS * 24 * 60 * 60,
-	})
+	store.set(WORKSPACE_COOKIE, workspace, sessionCookieOptions(sessionTtlSeconds()))
 }
 
 export async function clearSessionCookie(): Promise<void> {
 	const store = await cookies()
 	store.delete(SESSION_COOKIE)
 	store.delete(WORKSPACE_COOKIE)
+}
+
+/** Compile grants once, build session + API user record, set cookie. */
+export async function establishSession(user: UserDocument): Promise<{
+	session: SessionUser
+	record: UserRecord
+}> {
+	const hydrated = await hydrateAuthUser(user)
+	await setSessionCookie(hydrated.session)
+	return hydrated
 }
 
 export async function hydrateAuthUser(user: UserDocument): Promise<{
@@ -223,18 +213,16 @@ export async function hydrateAuthUser(user: UserDocument): Promise<{
 		role,
 	)
 
-	const catalog = organizations.map((org) => ({
-		id: org.id,
-		slug: org.slug,
-		name: org.name,
-		tags: org.tags,
-	}))
-
-	const accessibleOrgs = resolveAccessibleOrgs(compiled.grants, compiled.memberships, catalog)
-	const canAccessAdmin = canAccessAdminWorkspace({
-		grants: compiled.grants,
-		permissions: compiled.permissions,
-	})
+	const accessibleOrgs = resolveAccessibleOrgs(
+		compiled.grants,
+		compiled.memberships,
+		organizations.map((org) => ({
+			id: org.id,
+			slug: org.slug,
+			name: org.name,
+			tags: org.tags,
+		})),
+	)
 
 	const session: SessionUser = {
 		id: user._id.toHexString(),
@@ -254,26 +242,23 @@ export async function hydrateAuthUser(user: UserDocument): Promise<{
 		permissions: compiled.permissions,
 		accessibleOrgs,
 		activeOrgSlug: "",
-		canAccessAdmin,
+		canAccessAdmin: canAccessAdminWorkspace({
+			grants: compiled.grants,
+			permissions: compiled.permissions,
+		}),
 	}
 
 	const workspace = (await readWorkspaceCookie()) ?? defaultWorkspace(session)
 	return {
 		session: applyWorkspaceCookie(session, workspace),
-		record: mapUser(user, role),
+		record: mapUser(user, role, compiled),
 	}
-}
-
-export async function toSessionUser(user: UserDocument): Promise<SessionUser> {
-	const { session } = await hydrateAuthUser(user)
-	return session
 }
 
 function normalizeAccessibleOrgs(values: AccessibleOrg[] | undefined): AccessibleOrg[] {
 	if (!Array.isArray(values)) {
 		return []
 	}
-
 	return values.map((org) => ({
 		id: org.id || org.slug,
 		slug: org.slug,

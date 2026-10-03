@@ -11,6 +11,7 @@ import { estimateReadTime } from "@/lib/cms/read-time"
 import type { BlogPostRecord } from "@/types/cms"
 import { resolveAccessStatus, resolveInviteState } from "@/lib/auth/access"
 import { buildUserGrants } from "@/lib/auth/resolve-user-grants"
+import type { AccessGrant, OrgMembership } from "@/lib/auth/grants"
 import { orgSlugFromPath } from "@/lib/auth/fleet-access"
 import { titleCase } from "@/lib/format"
 import type {
@@ -19,9 +20,18 @@ import type {
 	LocationRecord,
 	MachineRecord,
 	OrganizationRecord,
+	Permission,
 	RoleRecord,
 	UserRecord,
 } from "@/types/domain"
+
+type CompiledUserGrants = {
+	memberships: OrgMembership[]
+	extraGrants: AccessGrant[]
+	grants: AccessGrant[]
+	grantKeys: string[]
+	permissions: Permission[]
+}
 
 export function toIso(date: Date): string {
 	return date.toISOString()
@@ -39,16 +49,22 @@ export function mapOrganization(doc: OrganizationDocument): OrganizationRecord {
 	}
 }
 
-export function mapUser(doc: UserDocument, role?: RoleRecord | null): UserRecord {
-	const compiled = buildUserGrants(
-		{
-			role: doc.role,
-			orgSlug: doc.orgSlug,
-			memberships: doc.memberships,
-			extraGrants: doc.extraGrants,
-		},
-		role,
-	)
+export function mapUser(
+	doc: UserDocument,
+	role?: RoleRecord | null,
+	compiledGrants?: CompiledUserGrants,
+): UserRecord {
+	const compiled =
+		compiledGrants ??
+		buildUserGrants(
+			{
+				role: doc.role,
+				orgSlug: doc.orgSlug,
+				memberships: doc.memberships,
+				extraGrants: doc.extraGrants,
+			},
+			role,
+		)
 	return {
 		id: doc._id.toHexString(),
 		name: doc.name,
@@ -153,7 +169,7 @@ export function mapInventorySlot(
 	return {
 		id: doc._id.toHexString(),
 		machineId: doc.machineId.toHexString(),
-		machineName: machineName ?? doc.machineName ?? "Unknown machine",
+		machineName: machineName || doc.machineName || "Unknown machine",
 		slotIndex: doc.slotIndex,
 		sku: doc.sku,
 		label: doc.label,

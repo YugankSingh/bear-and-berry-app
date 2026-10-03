@@ -1,8 +1,7 @@
 import { acceptInviteSchema } from "@/lib/validations/auth"
-import { resolveAccessStatus } from "@/lib/auth/access"
 import { authorizeAcceptInvite } from "@/lib/auth/accept-invite-gate"
 import { hashSecret } from "@/lib/auth/tokens"
-import { hydrateAuthUser, setSessionCookie } from "@/lib/auth/session"
+import { establishSession } from "@/lib/auth/session"
 import { findUserByInviteTokenHash, updateUser } from "@/lib/repositories/users"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
@@ -37,20 +36,19 @@ export async function POST(request: Request) {
 			return fail("SERVER_ERROR", "Could not accept this invitation.", 500)
 		}
 
-		const accepted = {
+		const { record } = await establishSession({
 			...user!,
-			accessStatus: "invited" as const,
+			accessStatus: "invited",
 			emailVerified: true,
 			passwordReady: true,
 			inviteAcceptedAt: new Date(),
 			inviteTokenHash: null,
 			inviteExpiresAt: null,
-		}
-		const { session } = await hydrateAuthUser(accepted)
-		await setSessionCookie(session)
+		})
+
 		return ok({
 			user: updated,
-			accessStatus: resolveAccessStatus("invited"),
+			accessStatus: record.accessStatus,
 		})
 	} catch (error) {
 		return handleApiError(error)

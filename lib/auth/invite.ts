@@ -4,25 +4,6 @@ import { createInviteToken } from "@/lib/auth/tokens"
 import { updateUser, type UserPatchInput } from "@/lib/repositories/users"
 import type { UserRecord } from "@/types/domain"
 
-export type InviteIssueResult = {
-	user: UserRecord
-	expiresAt: Date
-	token: string
-}
-
-export function prepareInviteToken(): {
-	token: string
-	tokenHash: string
-	expiresAt: Date
-} {
-	const invite = createInviteToken()
-	return {
-		token: invite.token,
-		tokenHash: invite.tokenHash,
-		expiresAt: invite.expiresAt,
-	}
-}
-
 export function scheduleInviteEmail(input: { to: string; name: string; token: string }): void {
 	after(async () => {
 		try {
@@ -33,7 +14,7 @@ export function scheduleInviteEmail(input: { to: string; name: string; token: st
 	})
 }
 
-/** Single write for invite token (+ optional patch fields), then email via after(). */
+/** One DB write for invite token (+ optional patch), then email via `after()`. */
 export async function issueInvite(
 	userId: string,
 	options: {
@@ -41,8 +22,8 @@ export async function issueInvite(
 		name: string
 		patch?: UserPatchInput
 	},
-): Promise<InviteIssueResult> {
-	const invite = prepareInviteToken()
+): Promise<{ user: UserRecord; expiresAt: Date }> {
+	const invite = createInviteToken()
 	const user = await updateUser(userId, {
 		...options.patch,
 		accessStatus: "pending_invite",
@@ -60,5 +41,5 @@ export async function issueInvite(
 		token: invite.token,
 	})
 
-	return { user, expiresAt: invite.expiresAt, token: invite.token }
+	return { user, expiresAt: invite.expiresAt }
 }

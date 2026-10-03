@@ -1,10 +1,10 @@
 import { signupSchema } from "@/lib/validations/auth"
 import { bootstrapFirstAdmin } from "@/lib/auth/bootstrap"
-import { isUserRemoved, resolveAccessStatus } from "@/lib/auth/access"
+import { isUserRemoved } from "@/lib/auth/access"
 import { nextAuthStep } from "@/lib/auth/lookup"
 import { createEmailOtp } from "@/lib/auth/tokens"
 import { BEAR_AND_BERRY_SLUG } from "@/lib/auth/scope"
-import { hydrateAuthUser, setSessionCookie } from "@/lib/auth/session"
+import { establishSession } from "@/lib/auth/session"
 import { sendSignupOtpEmail } from "@/lib/mail/auth-mail"
 import { countUsers, createUser, findUserByEmail, updateUser } from "@/lib/repositories/users"
 import { findSignupRole } from "@/lib/repositories/roles"
@@ -41,11 +41,10 @@ export async function POST(request: Request) {
 				name: body.name,
 			})
 			if (user) {
-				const { session, record } = await hydrateAuthUser(user)
-				await setSessionCookie(session)
+				const { record } = await establishSession(user)
 				return ok({
 					user: record,
-					accessStatus: resolveAccessStatus(user.accessStatus),
+					accessStatus: record.accessStatus,
 					needsVerification: false,
 				}, 201)
 			}

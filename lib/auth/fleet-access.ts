@@ -1,5 +1,5 @@
-import { hasAllOrganizations, isSystemAdmin } from "@/lib/auth/permissions"
-import { hasGrant, hasOrgWildcard } from "@/lib/auth/grants"
+import { hasUnrestrictedAccess } from "@/lib/auth/permissions"
+import { hasGrant } from "@/lib/auth/grants"
 import type { LocationRecord, MachineRecord, SessionUser } from "@/types/domain"
 
 export function orgSlugFromPath(path: string): string {
@@ -14,41 +14,41 @@ export function canSeeLocation(
 	user: Pick<SessionUser, "permissions" | "grants" | "accessibleOrgs">,
 	location: Pick<LocationRecord, "id" | "orgSlug" | "tags">,
 ): boolean {
-	if (isSystemAdmin(user) || hasAllOrganizations(user) || hasOrgWildcard(user.grants)) {
+	if (hasUnrestrictedAccess(user)) {
 		return true
 	}
-	if (user.grants?.length) {
-		return hasGrant(user.grants, {
-			resource: "locations",
-			action: "view",
-			org: location.orgSlug,
-			orgTags: orgTagsFor(user, location.orgSlug),
-			tags: location.tags,
-			id: location.id,
-		})
+	if (!user.grants?.length) {
+		return false
 	}
-	return false
+	return hasGrant(user.grants, {
+		resource: "locations",
+		action: "view",
+		org: location.orgSlug,
+		orgTags: orgTagsFor(user, location.orgSlug),
+		tags: location.tags,
+		id: location.id,
+	})
 }
 
 export function canSeeMachine(
 	user: Pick<SessionUser, "permissions" | "grants" | "accessibleOrgs">,
 	machine: Pick<MachineRecord, "id" | "orgSlug" | "locationId" | "tags">,
 ): boolean {
-	if (isSystemAdmin(user) || hasAllOrganizations(user) || hasOrgWildcard(user.grants)) {
+	if (hasUnrestrictedAccess(user)) {
 		return true
 	}
-	if (user.grants?.length) {
-		return hasGrant(user.grants, {
-			resource: "machines",
-			action: "view",
-			org: machine.orgSlug,
-			orgTags: orgTagsFor(user, machine.orgSlug),
-			tags: machine.tags,
-			location: machine.locationId,
-			id: machine.id,
-		})
+	if (!user.grants?.length) {
+		return false
 	}
-	return false
+	return hasGrant(user.grants, {
+		resource: "machines",
+		action: "view",
+		org: machine.orgSlug,
+		orgTags: orgTagsFor(user, machine.orgSlug),
+		tags: machine.tags,
+		location: machine.locationId,
+		id: machine.id,
+	})
 }
 
 export function filterLocations<T extends Pick<LocationRecord, "id" | "orgSlug" | "tags">>(

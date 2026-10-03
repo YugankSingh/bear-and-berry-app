@@ -1,10 +1,9 @@
 import { loginSchema } from "@/lib/validations/auth"
 import { countUsers, findUserByEmail } from "@/lib/repositories/users"
 import { verifyPassword } from "@/lib/auth/password"
-import { hydrateAuthUser, setSessionCookie } from "@/lib/auth/session"
+import { establishSession } from "@/lib/auth/session"
 import { bootstrapFirstAdmin } from "@/lib/auth/bootstrap"
 import { authorizeLogin } from "@/lib/auth/login-gate"
-import { resolveAccessStatus } from "@/lib/auth/access"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
@@ -30,11 +29,10 @@ export async function POST(request: Request) {
 			return fail("UNAUTHORIZED", "Those credentials do not match our records.", 401)
 		}
 
-		const { session, record } = await hydrateAuthUser(user!)
-		await setSessionCookie(session)
+		const { record } = await establishSession(user!)
 		return ok({
 			user: record,
-			accessStatus: resolveAccessStatus(user!.accessStatus),
+			accessStatus: record.accessStatus,
 		})
 	} catch (error) {
 		return handleApiError(error)

@@ -136,6 +136,16 @@ export function isSystemAdmin(user: {
 	return hasPermission(user, SYSTEM_ADMIN_PERMISSION)
 }
 
+/** System admin, orgs:all, or org:* grants — sees every organization. */
+export function hasUnrestrictedAccess(
+	user: {
+		permissions?: readonly string[]
+		grants?: import("@/lib/auth/grants").AccessGrant[]
+	} | null | undefined,
+): boolean {
+	return isSystemAdmin(user) || hasAllOrganizations(user) || hasOrgWildcard(user?.grants)
+}
+
 export function roleHasPermission(
 	role: Pick<RoleRecord, "permissions"> | null | undefined,
 	permission: Permission,
