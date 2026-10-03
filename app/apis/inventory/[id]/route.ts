@@ -2,7 +2,7 @@ import { inventoryPatchSchema } from "@/lib/validations/inventory"
 import { findInventoryById, updateInventoryQuantity } from "@/lib/repositories/inventory"
 import { findMachineById } from "@/lib/repositories/machines"
 import { requirePermission } from "@/lib/auth/require-auth"
-import { canSeeMachine } from "@/lib/auth/resource-access"
+import { canSeeMachine } from "@/lib/auth/fleet-access"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 

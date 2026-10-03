@@ -2,7 +2,7 @@ import { machinePatchSchema } from "@/lib/validations/machine"
 import { findMachineById, updateMachine } from "@/lib/repositories/machines"
 import { findLocationById } from "@/lib/repositories/locations"
 import { requirePermission } from "@/lib/auth/require-auth"
-import { canSeeLocation, canSeeMachine } from "@/lib/auth/resource-access"
+import { canSeeLocation, canSeeMachine } from "@/lib/auth/fleet-access"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 

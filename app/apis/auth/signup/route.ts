@@ -3,7 +3,6 @@ import { bootstrapFirstAdmin } from "@/lib/auth/bootstrap"
 import { isUserRemoved, resolveAccessStatus } from "@/lib/auth/access"
 import { nextAuthStep } from "@/lib/auth/lookup"
 import { createEmailOtp } from "@/lib/auth/tokens"
-import { emptyLimitedAccess } from "@/lib/auth/resource-access"
 import { BEAR_AND_BERRY_SLUG } from "@/lib/auth/scope"
 import { setSessionCookie, toSessionUser } from "@/lib/auth/session"
 import { sendSignupOtpEmail } from "@/lib/mail/auth-mail"
@@ -71,15 +70,11 @@ export async function POST(request: Request) {
 			role: signupRole.slug,
 			orgId: org._id.toHexString(),
 			orgSlug: org.slug,
-			organization: org.name,
+			memberships: [{ org: org.slug, orgTag: null, role: signupRole.slug }],
 			tags: ["waitlist"],
 			accessStatus: "waitlisted",
 			emailVerified: false,
 			passwordReady: true,
-			resourceAccess: {
-				...emptyLimitedAccess(),
-				organizationSlugs: [org.slug],
-			},
 		})
 
 		const otp = createEmailOtp()

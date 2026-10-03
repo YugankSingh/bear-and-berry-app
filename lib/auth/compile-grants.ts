@@ -2,13 +2,11 @@ import {
 	ORGS_ALL_PERMISSION,
 	SYSTEM_ADMIN_PERMISSION,
 	type Permission,
-	type ResourceAccess,
 	type RoleRecord,
 } from "@/types/domain"
 import {
 	GRANT_WILDCARD,
 	fillRequiredWildcards,
-	normalizeMemberships,
 	parseGrants,
 	stringifyGrants,
 	type AccessGrant,
@@ -17,6 +15,7 @@ import {
 	type GrantResource,
 	type OrgMembership,
 	RESOURCE_DIMENSIONS,
+	normalizeMemberships,
 } from "@/lib/auth/grants"
 import { isOrgBoundPermission } from "@/lib/auth/permission-scopes"
 
@@ -66,12 +65,8 @@ const ACTION_TO_PERMISSION: Partial<Record<GrantResource, Partial<Record<GrantAc
 
 export type CompileGrantInput = {
 	role?: Pick<RoleRecord, "slug" | "permissions"> | null
-	permissions?: readonly Permission[]
-	extraPermissions?: readonly Permission[]
+	memberships: readonly OrgMembership[]
 	extraGrants?: readonly AccessGrant[]
-	memberships?: readonly OrgMembership[]
-	resourceAccess?: ResourceAccess | null
-	orgSlug?: string | null
 }
 
 export function capabilityForPermission(permission: Permission): {
@@ -103,58 +98,18 @@ export function permissionsFromGrants(grants: readonly AccessGrant[]): Permissio
 	return [...keys]
 }
 
-export function membershipsFromAccess(input: {
-	role: string
-	resourceAccess?: ResourceAccess | null
-	orgSlug?: string | null
-	permissions?: readonly Permission[]
-}): OrgMembership[] {
-	const access = input.resourceAccess
-	const permissions = input.permissions ?? []
-	const platform =
-		permissions.includes(ORGS_ALL_PERMISSION) ||
-		permissions.includes(SYSTEM_ADMIN_PERMISSION) ||
-		access?.mode === "all"
-
-	if (platform) {
-		return normalizeMemberships([{ org: GRANT_WILDCARD, orgTag: null, role: input.role }])
-	}
-
-	const memberships: OrgMembership[] = []
-	for (const slug of access?.organizationSlugs ?? []) {
-		memberships.push({ org: slug, orgTag: null, role: input.role })
-	}
-	for (const tag of access?.organizationTags ?? []) {
-		memberships.push({ org: null, orgTag: tag, role: input.role })
-	}
-	if (memberships.length === 0 && input.orgSlug && permissions.some(isOrgBoundPermission)) {
-		memberships.push({ org: input.orgSlug, orgTag: null, role: input.role })
-	}
-	return normalizeMemberships(memberships)
-}
-
 export function compileGrants(input: CompileGrantInput): AccessGrant[] {
-	const extraGrants = input.extraGrants ?? []
-	const extraPermissions = extraGrants.length > 0 ? [] : uniquePermissions(input.extraPermissions ?? [])
-	const rolePermissions = uniquePermissions(input.role?.permissions ?? input.permissions ?? [])
-	const permissions = uniquePermissions([...rolePermissions, ...extraPermissions])
+	const rolePermissions = uniquePermissions(input.role?.permissions ?? [])
 	const roleSlug = input.role?.slug ?? "viewer"
-	const memberships = normalizeMemberships(
-		Array.isArray(input.memberships)
-			? input.memberships
-			: membershipsFromAccess({
-					role: roleSlug,
-					resourceAccess: input.resourceAccess,
-					orgSlug: input.orgSlug,
-					permissions,
-				}),
-	)
+	const memberships = normalizeMemberships(input.memberships)
+	const extraGrants = input.extraGrants ?? []
+	const permissions = uniquePermissions([...rolePermissions, ...permissionsFromGrants(extraGrants)])
 
-	const orgBound = permissions.filter(isOrgBoundPermission)
-	const platform = permissions.filter((permission) => !isOrgBoundPermission(permission))
+	const orgBound = rolePermissions.filter(isOrgBoundPermission)
+	const platform = rolePermissions.filter((permission) => !isOrgBoundPermission(permission))
 	const allOrganizations =
-		permissions.includes(ORGS_ALL_PERMISSION) ||
-		permissions.includes(SYSTEM_ADMIN_PERMISSION) ||
+		rolePermissions.includes(ORGS_ALL_PERMISSION) ||
+		rolePermissions.includes(SYSTEM_ADMIN_PERMISSION) ||
 		memberships.some((membership) => membership.org === GRANT_WILDCARD)
 	const orgMemberships = allOrganizations
 		? normalizeMemberships([{ org: GRANT_WILDCARD, orgTag: null, role: roleSlug }])
@@ -163,7 +118,7 @@ export function compileGrants(input: CompileGrantInput): AccessGrant[] {
 	const grants: AccessGrant[] = []
 	for (const membership of orgMemberships) {
 		for (const permission of orgBound) {
-			grants.push(...grantsForOrgPermission(permission, membership, allOrganizations ? null : input.resourceAccess))
+			grants.push(...grantsForOrgPermission(permission, membership))
 		}
 	}
 	for (const permission of platform) {
@@ -274,70 +229,24 @@ function grantsForPlatformPermission(permission: Permission): AccessGrant[] {
 	]
 }
 
-function grantsForOrgPermission(
-	permission: Permission,
-	membership: OrgMembership,
-	access: ResourceAccess | null | undefined,
-): AccessGrant[] {
+function grantsForOrgPermission(permission: Permission, membership: OrgMembership): AccessGrant[] {
 	const capability = capabilityForPermission(permission)
 	if (!capability) {
 		return []
 	}
 
 	const dimensions = RESOURCE_DIMENSIONS[capability.resource]
-	return scopeSeeds(capability.resource, membership, access).map((seed) =>
+	return [
 		fillRequiredWildcards({
 			resource: capability.resource,
 			action: capability.action,
-			org: seed.org,
-			orgTag: seed.orgTag,
-			tag: seed.tag ?? (dimensions.tag ? GRANT_WILDCARD : null),
-			location: seed.location ?? (dimensions.location ? GRANT_WILDCARD : null),
-			id: seed.id,
+			org: membership.org,
+			orgTag: membership.orgTag,
+			tag: dimensions.tag ? GRANT_WILDCARD : null,
+			location: dimensions.location ? GRANT_WILDCARD : null,
+			id: null,
 		}),
-	)
-}
-
-function scopeSeeds(
-	resource: GrantResource,
-	membership: OrgMembership,
-	access: ResourceAccess | null | undefined,
-): Array<Pick<AccessGrant, "org" | "orgTag" | "tag" | "location" | "id">> {
-	const org = membership.org
-	const orgTag = membership.orgTag
-	const limited = access && access.mode === "limited" ? access : null
-	const applies =
-		!limited ||
-		membership.org === GRANT_WILDCARD ||
-		(membership.org != null && limited.organizationSlugs.includes(membership.org)) ||
-		(membership.orgTag != null && limited.organizationTags.includes(membership.orgTag))
-
-	if (!applies || !limited || !usesFleetNarrowing(resource)) {
-		return [{ org, orgTag, tag: null, location: null, id: null }]
-	}
-
-	const seeds: Array<Pick<AccessGrant, "org" | "orgTag" | "tag" | "location" | "id">> = []
-	for (const location of limited.locationIds) {
-		if (resource === "locations") {
-			seeds.push({ org, orgTag, tag: GRANT_WILDCARD, location: null, id: location })
-		} else {
-			seeds.push({ org, orgTag, tag: GRANT_WILDCARD, location, id: null })
-		}
-	}
-	for (const tag of limited.machineTags) {
-		seeds.push({ org, orgTag, tag, location: GRANT_WILDCARD, id: null })
-	}
-	for (const id of limited.machineIds) {
-		seeds.push({ org, orgTag, tag: GRANT_WILDCARD, location: GRANT_WILDCARD, id })
-	}
-	if (seeds.length === 0) {
-		return [{ org, orgTag, tag: null, location: null, id: null }]
-	}
-	return seeds
-}
-
-function usesFleetNarrowing(resource: GrantResource): boolean {
-	return resource === "machines" || resource === "inventory" || resource === "revenue" || resource === "locations"
+	]
 }
 
 function uniquePermissions(values: readonly Permission[]): Permission[] {

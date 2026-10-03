@@ -10,10 +10,8 @@ import type {
 import { estimateReadTime } from "@/lib/cms/read-time"
 import type { BlogPostRecord } from "@/types/cms"
 import { resolveAccessStatus, resolveInviteState } from "@/lib/auth/access"
-import { resolvePermissions } from "@/lib/auth/permissions"
-import { orgSlugFromPath, resolveResourceAccess } from "@/lib/auth/resource-access"
-import { compileGrants, membershipsFromAccess } from "@/lib/auth/compile-grants"
-import { normalizeMemberships, stringifyGrants } from "@/lib/auth/grants"
+import { buildUserGrants } from "@/lib/auth/resolve-user-grants"
+import { orgSlugFromPath } from "@/lib/auth/fleet-access"
 import { titleCase } from "@/lib/format"
 import type {
 	InventorySlotRecord,
@@ -42,33 +40,15 @@ export function mapOrganization(doc: OrganizationDocument): OrganizationRecord {
 }
 
 export function mapUser(doc: UserDocument, role?: RoleRecord | null): UserRecord {
-	const extraPermissions = resolvePermissions(null, doc.extraPermissions)
-	const permissions = resolvePermissions(role, extraPermissions)
-	const extraGrants = doc.extraGrants ?? []
-	const resourceAccess = resolveResourceAccess({
-		...doc,
-		permissions,
-		extraPermissions,
-	})
-	const memberships = normalizeMemberships(
-		Array.isArray(doc.memberships)
-			? doc.memberships
-			: membershipsFromAccess({
-					role: doc.role,
-					resourceAccess,
-					orgSlug: doc.orgSlug,
-					permissions,
-				}),
-	)
-	const grants = compileGrants({
+	const compiled = buildUserGrants(
+		{
+			role: doc.role,
+			orgSlug: doc.orgSlug,
+			memberships: doc.memberships,
+			extraGrants: doc.extraGrants,
+		},
 		role,
-		permissions,
-		extraPermissions,
-		extraGrants,
-		memberships,
-		resourceAccess,
-		orgSlug: doc.orgSlug,
-	})
+	)
 	return {
 		id: doc._id.toHexString(),
 		name: doc.name,
@@ -78,18 +58,14 @@ export function mapUser(doc: UserDocument, role?: RoleRecord | null): UserRecord
 		roleRank: role?.rank ?? 0,
 		orgId: doc.orgId.toHexString(),
 		orgSlug: doc.orgSlug,
-		organization: doc.organization,
-		scopePath: doc.scopePath,
 		tags: doc.tags,
 		isActive: doc.isActive,
 		accessStatus: resolveAccessStatus(doc.accessStatus),
-		resourceAccess,
-		memberships,
-		extraPermissions,
-		extraGrants,
-		grants,
-		grantKeys: stringifyGrants(grants),
-		permissions,
+		memberships: compiled.memberships,
+		extraGrants: compiled.extraGrants,
+		grants: compiled.grants,
+		grantKeys: compiled.grantKeys,
+		permissions: compiled.permissions,
 		emailVerified: doc.emailVerified ?? true,
 		passwordReady: doc.passwordReady ?? true,
 		inviteState: resolveInviteState(doc),

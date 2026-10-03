@@ -12,7 +12,7 @@ describe("authorizeUserPatch", () => {
 		const actor = sessionUser({ permissions: ["users:write", "machines:read"] })
 		const result = authorizeUserPatch(actor, {
 			name: "Pat",
-			extraPermissions: ["machines:read"],
+			extraGrants: [],
 		})
 		expect(result).toEqual({
 			ok: false,
@@ -23,12 +23,12 @@ describe("authorizeUserPatch", () => {
 
 	it("blocks extras-only patches without users:grant", () => {
 		const actor = sessionUser({ permissions: ["users:write"] })
-		expect(authorizeUserPatch(actor, { extraPermissions: ["machines:read"] }).ok).toBe(false)
+		expect(authorizeUserPatch(actor, { extraGrants: [] }).ok).toBe(false)
 	})
 
 	it("allows extras-only patches with users:grant", () => {
 		const actor = sessionUser({ permissions: ["users:grant", "machines:read"] })
-		expect(authorizeUserPatch(actor, { extraPermissions: ["machines:read"] })).toEqual({
+		expect(authorizeUserPatch(actor, { extraGrants: [] })).toEqual({
 			ok: true,
 			extraOnly: true,
 		})
@@ -36,12 +36,10 @@ describe("authorizeUserPatch", () => {
 
 	it("allows combined name+extras only with both write and grant", () => {
 		const writeOnly = sessionUser({ permissions: ["users:write"] })
-		expect(authorizeUserPatch(writeOnly, { name: "Pat", extraPermissions: ["machines:read"] }).ok).toBe(
-			false,
-		)
+		expect(authorizeUserPatch(writeOnly, { name: "Pat", extraGrants: [] }).ok).toBe(false)
 
 		const both = sessionUser({ permissions: ["users:write", "users:grant", "machines:read"] })
-		expect(authorizeUserPatch(both, { name: "Pat", extraPermissions: ["machines:read"] })).toEqual({
+		expect(authorizeUserPatch(both, { name: "Pat", extraGrants: [] })).toEqual({
 			ok: true,
 			extraOnly: false,
 		})

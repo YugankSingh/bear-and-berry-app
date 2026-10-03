@@ -7,7 +7,6 @@ import type {
 	MachineStatus,
 	OrgKind,
 	AccessStatus,
-	ResourceAccess,
 	Permission,
 	Role,
 	SiteType,
@@ -34,12 +33,9 @@ export type UserDocument = {
 	role: Role
 	orgId: ObjectId
 	orgSlug: string
-	organization: string | null
-	scopePath: string
 	tags: string[]
 	isActive: boolean
 	accessStatus?: AccessStatus
-	resourceAccess?: ResourceAccess
 	memberships?: OrgMembership[]
 	extraGrants?: AccessGrant[]
 	emailVerified?: boolean
@@ -49,7 +45,6 @@ export type UserDocument = {
 	inviteAcceptedAt?: Date | null
 	emailOtpHash?: string | null
 	emailOtpExpiresAt?: Date | null
-	extraPermissions?: Permission[]
 	deletedAt?: Date | null
 	createdAt: Date
 	updatedAt: Date

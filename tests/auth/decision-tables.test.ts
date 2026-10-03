@@ -200,18 +200,16 @@ describe("auth decision tables — every persona × action", () => {
 			{ perms: [], body: { name: "A" }, ok: false },
 			{ perms: ["users:read"], body: { name: "A" }, ok: false },
 			{ perms: ["users:write"], body: { name: "A" }, ok: true },
-			{ perms: ["users:write"], body: { extraPermissions: ["machines:read"] }, ok: false },
-			{ perms: ["users:write"], body: { name: "A", extraPermissions: ["machines:read"] }, ok: false },
-			{ perms: ["users:grant"], body: { extraPermissions: ["machines:read"] }, ok: true },
+			{ perms: ["users:write"], body: { extraGrants: [] }, ok: false },
+			{ perms: ["users:write"], body: { name: "A", extraGrants: [] }, ok: false },
+			{ perms: ["users:grant"], body: { extraGrants: [] }, ok: true },
 			{ perms: ["users:grant"], body: { name: "A" }, ok: false },
 			{
 				perms: ["users:write", "users:grant"],
-				body: { name: "A", extraPermissions: ["machines:read"] },
+				body: { name: "A", extraGrants: [] },
 				ok: true,
 			},
-			{ perms: ["users:grant"], body: { extraGrants: [] }, ok: true },
-			{ perms: ["users:write"], body: { extraGrants: [] }, ok: false },
-			{ perms: ["system:admin"], body: { name: "A", extraPermissions: ["machines:read"] }, ok: true },
+			{ perms: ["system:admin"], body: { name: "A", extraGrants: [] }, ok: true },
 		]
 
 		for (const row of cases) {

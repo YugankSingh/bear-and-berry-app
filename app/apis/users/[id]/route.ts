@@ -1,24 +1,13 @@
 import { userPatchSchema } from "@/lib/validations/user"
 import { countLiveSystemAdmins, findUserById, softDeleteUser, toUserRecord, updateUser } from "@/lib/repositories/users"
 import { findRoleBySlug } from "@/lib/repositories/roles"
+import { listOrganizations } from "@/lib/repositories/organizations"
 import { AuthError, requireDashboardSession, requirePermission } from "@/lib/auth/require-auth"
 import { isUserRemoved } from "@/lib/auth/access"
-import {
-	canGrantAccessGrants,
-	canGrantPermissions,
-	hasPermission,
-	isSystemAdmin,
-} from "@/lib/auth/permissions"
+import { canGrantAccessGrants, hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
 import { authorizeUserPatch } from "@/lib/auth/user-patch-auth"
 import { resolveMembership } from "@/lib/auth/membership"
-import { permissionsFromGrants } from "@/lib/auth/compile-grants"
-import {
-	canAssignRole,
-	canGrantResourceAccess,
-	canManageUser,
-	resolveResourceAccess,
-} from "@/lib/auth/resource-access"
-import { loadVisibleFleet } from "@/lib/auth/visible-fleet"
+import { canAssignRole, canGrantMemberships, canManageUser } from "@/lib/auth/team-access"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
@@ -54,13 +43,6 @@ export async function PATCH(request: Request, context: RouteContext) {
 		}
 
 		const extraGrants = body.extraGrants
-		const extraPermissions =
-			extraGrants !== undefined
-				? permissionsFromGrants(extraGrants)
-				: body.extraPermissions
-		if (extraPermissions && !canGrantPermissions(actor, extraPermissions) && extraGrants === undefined) {
-			return fail("FORBIDDEN", "You can only grant permissions you already have.", 403)
-		}
 		if (extraGrants !== undefined) {
 			if (!hasPermission(actor, "users:grant") && !isSystemAdmin(actor)) {
 				return fail("FORBIDDEN", "You cannot grant extra permissions.", 403)
@@ -70,53 +52,40 @@ export async function PATCH(request: Request, context: RouteContext) {
 			}
 		}
 
-		const touchesMembership = Boolean(body.role || body.resourceAccess || body.membership)
+		const touchesMembership = Boolean(body.role || body.membership)
 		let membershipUpdate: {
 			role?: string
-			resourceAccess?: ReturnType<typeof resolveResourceAccess>
 			orgId?: string
 			orgSlug?: string
-			organization?: string
 			memberships?: typeof target.memberships
 		} = {}
 
 		if (touchesMembership) {
-			const membership = await resolveMembership(
-				nextRole,
-				body.resourceAccess,
-				existing.orgSlug,
-				body.membership,
-			)
+			const membership = await resolveMembership(nextRole, existing.orgSlug, body.membership)
 			if ("error" in membership) {
 				return fail("VALIDATION_ERROR", membership.error, 400)
 			}
 
-			if (membership.memberships.length > 0 || membership.resourceAccess.mode === "all") {
-				const { allLocations, allMachines } = await loadVisibleFleet(actor)
-				if (!canGrantResourceAccess(actor, membership.resourceAccess, { locations: allLocations, machines: allMachines })) {
-					return fail("FORBIDDEN", "You cannot grant broader resource access than you have.", 403)
-				}
+			const orgCatalog = await listOrganizations()
+			if (!canGrantMemberships(actor, membership.memberships, orgCatalog)) {
+				return fail("FORBIDDEN", "You cannot assign users outside your organizations.", 403)
 			}
 
 			membershipUpdate = {
 				role: nextRole.slug,
-				resourceAccess: membership.resourceAccess,
 				orgId: membership.org._id.toHexString(),
 				orgSlug: membership.org.slug,
-				organization: body.organization ?? membership.org.name,
 				memberships: membership.memberships,
 			}
 		}
 
 		const user = await updateUser(id, {
 			name: body.name,
-			organization: body.organization,
 			tags: body.tags,
 			isActive: body.isActive,
 			password: body.password,
 			accessStatus: body.accessStatus,
 			...membershipUpdate,
-			extraPermissions,
 			extraGrants,
 		})
 		if (!user) {

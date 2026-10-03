@@ -1,13 +1,10 @@
 import { hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
 
 export type UserPatchAuthBody = {
-	extraPermissions?: unknown
 	extraGrants?: unknown
 	role?: unknown
-	resourceAccess?: unknown
 	membership?: unknown
 	name?: unknown
-	organization?: unknown
 	tags?: unknown
 	isActive?: unknown
 	accessStatus?: unknown
@@ -15,7 +12,6 @@ export type UserPatchAuthBody = {
 
 export type UserPatchAuthActor = {
 	permissions?: readonly string[]
-	extraPermissions?: readonly string[]
 	grants?: import("@/lib/auth/grants").AccessGrant[]
 }
 
@@ -27,14 +23,12 @@ export function authorizeUserPatch(
 	actor: UserPatchAuthActor,
 	body: UserPatchAuthBody,
 ): UserPatchAuthResult {
-	const touchesExtras = body.extraPermissions !== undefined || body.extraGrants !== undefined
+	const touchesExtras = body.extraGrants !== undefined
 	const extraOnly =
 		touchesExtras &&
 		body.role === undefined &&
-		body.resourceAccess === undefined &&
 		body.membership === undefined &&
 		body.name === undefined &&
-		body.organization === undefined &&
 		body.tags === undefined &&
 		body.isActive === undefined &&
 		body.accessStatus === undefined

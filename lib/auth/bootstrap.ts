@@ -1,8 +1,8 @@
 import { createUser, findUserByEmail } from "@/lib/repositories/users"
 import { findSystemAdminRole } from "@/lib/repositories/roles"
 import { findOrganizationBySlug } from "@/lib/repositories/organizations"
-import { ALL_RESOURCE_ACCESS } from "@/lib/auth/resource-access"
-import { GLOBAL_SCOPE, VENDFORGE_LABS_SLUG } from "@/lib/auth/scope"
+import { GRANT_WILDCARD } from "@/lib/auth/grants"
+import { VENDFORGE_LABS_SLUG } from "@/lib/auth/scope"
 import { getEnv } from "@/lib/env"
 import type { UserDocument } from "@/lib/db/documents"
 
@@ -37,11 +37,9 @@ export async function bootstrapFirstAdmin(input: {
 		role: adminRole.slug,
 		orgId: labs._id.toHexString(),
 		orgSlug: labs.slug,
-		organization: null,
-		scopePath: GLOBAL_SCOPE,
 		tags: [],
 		accessStatus: "invited",
-		resourceAccess: ALL_RESOURCE_ACCESS,
+		memberships: [{ org: GRANT_WILDCARD, orgTag: null, role: adminRole.slug }],
 		emailVerified: true,
 		passwordReady: true,
 		inviteAcceptedAt: new Date(),

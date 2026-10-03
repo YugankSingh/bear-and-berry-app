@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { canAssignRole, canManageUser, canSeeTeamMember } from "@/lib/auth/resource-access"
+import { canAssignRole, canManageUser, canSeeTeamMember } from "@/lib/auth/team-access"
 import { grant, sessionUser } from "../helpers/auth"
 import type { RoleRecord, UserRecord } from "@/types/domain"
 

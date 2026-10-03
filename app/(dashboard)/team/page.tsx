@@ -13,7 +13,8 @@ import {
 	assignableRoles,
 	canManageUser,
 	canSeeTeamMember,
-} from "@/lib/auth/resource-access"
+	memberVisibleInOrg,
+} from "@/lib/auth/team-access"
 import { GRANT_WILDCARD } from "@/lib/auth/grants"
 import type { UserRecord } from "@/types/domain"
 import { loadVisibleFleet } from "@/lib/auth/visible-fleet"
@@ -49,13 +50,7 @@ export default async function TeamPage() {
 			if (!user.activeOrgSlug) {
 				return true
 			}
-			return (
-				member.orgSlug === user.activeOrgSlug ||
-				member.memberships.some(
-					(membership) => membership.org === user.activeOrgSlug || membership.org === "*",
-				) ||
-				member.resourceAccess.organizationSlugs.includes(user.activeOrgSlug)
-			)
+			return memberVisibleInOrg(member, user.activeOrgSlug)
 		})
 		roles = assignableRoles(user, allRoles)
 		catalog = permissions
@@ -113,9 +108,9 @@ export default async function TeamPage() {
 									<Badge tone={isSystemAdmin(member) ? "berry" : "neutral"}>
 										{member.roleName}
 									</Badge>
-									{member.extraGrants.length > 0 || member.extraPermissions.length > 0 ? (
+									{member.extraGrants.length > 0 ? (
 										<p className="mt-2 text-[11px] text-[#8C8C8C]">
-											+{member.extraGrants.length || member.extraPermissions.length} extra
+											+{member.extraGrants.length} extra
 										</p>
 									) : null}
 								</td>

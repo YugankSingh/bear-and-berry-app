@@ -75,7 +75,6 @@ export function resolvePermissions(
 export function hasPermission(
 	user: {
 		permissions?: readonly string[]
-		extraPermissions?: readonly string[]
 		grants?: import("@/lib/auth/grants").AccessGrant[]
 		activeOrgSlug?: string
 		orgSlug?: string
@@ -84,11 +83,7 @@ export function hasPermission(
 	} | null | undefined,
 	permission: Permission,
 ): boolean {
-	if (
-		user?.permissions?.includes(SYSTEM_ADMIN_PERMISSION) ||
-		user?.extraPermissions?.includes(SYSTEM_ADMIN_PERMISSION) ||
-		hasAnyCapability(user?.grants, "system", "admin")
-	) {
+	if (user?.permissions?.includes(SYSTEM_ADMIN_PERMISSION) || hasAnyCapability(user?.grants, "system", "admin")) {
 		return true
 	}
 	if (user?.grants?.length) {
@@ -126,27 +121,19 @@ export function hasAnyPermission(
 
 export function hasAllOrganizations(user: {
 	permissions?: readonly string[]
-	extraPermissions?: readonly string[]
 	grants?: import("@/lib/auth/grants").AccessGrant[]
 } | null | undefined): boolean {
 	if (hasOrgWildcard(user?.grants)) {
 		return true
 	}
-	return (
-		hasPermission(user, ORGS_ALL_PERMISSION) ||
-		Boolean(user?.extraPermissions?.includes(ORGS_ALL_PERMISSION))
-	)
+	return hasPermission(user, ORGS_ALL_PERMISSION)
 }
 
 export function isSystemAdmin(user: {
 	permissions?: readonly string[]
-	extraPermissions?: readonly string[]
 	grants?: import("@/lib/auth/grants").AccessGrant[]
 } | null | undefined): boolean {
-	return (
-		hasPermission(user, SYSTEM_ADMIN_PERMISSION) ||
-		Boolean(user?.extraPermissions?.includes(SYSTEM_ADMIN_PERMISSION))
-	)
+	return hasPermission(user, SYSTEM_ADMIN_PERMISSION)
 }
 
 export function roleHasPermission(

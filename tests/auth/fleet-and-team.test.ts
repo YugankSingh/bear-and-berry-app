@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { canSeeLocation, canSeeMachine, canAssignRole, canManageUser } from "@/lib/auth/resource-access"
+import { canSeeLocation, canSeeMachine } from "@/lib/auth/fleet-access"
+import { canAssignRole, canManageUser } from "@/lib/auth/team-access"
 import { canAccessCms, visibleNavItems } from "@/lib/auth/rbac"
 import { grant, sessionUser } from "../helpers/auth"
 import type { RoleRecord, UserRecord } from "@/types/domain"

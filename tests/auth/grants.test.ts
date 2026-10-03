@@ -72,9 +72,8 @@ describe("grant parsing and matching", () => {
 describe("compileGrants", () => {
 	it("does not leak org-bound grants across memberships", () => {
 		const compiled = compileGrants({
-			permissions: ["users:read", "machines:read"] as Permission[],
+			role: { slug: "admin", permissions: ["users:read", "machines:read"] },
 			memberships: [{ org: "bear-and-berry", orgTag: null, role: "admin" }],
-			orgSlug: "bear-and-berry",
 		})
 		expect(hasCapability(compiled, { resource: "users", action: "view", org: "bear-and-berry" })).toBe(true)
 		expect(hasCapability(compiled, { resource: "users", action: "view", org: "other-org" })).toBe(false)
@@ -92,7 +91,7 @@ describe("compileGrants", () => {
 
 	it("keeps platform permissions unbound while org permissions stay scoped", () => {
 		const mixed = compileGrants({
-			permissions: ["inventory:read", "cms:write"] as Permission[],
+			role: { slug: "admin", permissions: ["inventory:read", "cms:write"] },
 			memberships: [{ org: "bear-and-berry", orgTag: null, role: "admin" }],
 		})
 		expect(mixed.find((g) => g.resource === "cms")?.org).toBeNull()
@@ -102,7 +101,7 @@ describe("compileGrants", () => {
 
 	it("honors extra grants on a different org without inheriting membership org", () => {
 		const extras = compileGrants({
-			permissions: ["dashboard:read"] as Permission[],
+			role: { slug: "viewer", permissions: ["dashboard:read"] },
 			memberships: [{ org: "bear-and-berry", orgTag: null, role: "viewer" }],
 			extraGrants: [
 				fillRequiredWildcards({
@@ -138,7 +137,10 @@ describe("compileGrants", () => {
 
 	it("expands super_admin org-bound grants to org:*", () => {
 		const superAdmin = compileGrants({
-			permissions: ["system:admin", "inventory:read", "cms:write"] as Permission[],
+			role: {
+				slug: "super_admin",
+				permissions: ["system:admin", "inventory:read", "cms:write"],
+			},
 			memberships: [{ org: "bear-and-berry", orgTag: null, role: "super_admin" }],
 		})
 		expect(hasCapability(superAdmin, { resource: "inventory", action: "view", org: "other-org" })).toBe(true)

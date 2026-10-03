@@ -1,7 +1,7 @@
 import { locationPatchSchema } from "@/lib/validations/location"
 import { findLocationById, updateLocation } from "@/lib/repositories/locations"
 import { requirePermission } from "@/lib/auth/require-auth"
-import { canSeeLocation } from "@/lib/auth/resource-access"
+import { canSeeLocation } from "@/lib/auth/fleet-access"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 

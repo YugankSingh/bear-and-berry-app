@@ -3,13 +3,12 @@ import { ObjectId } from "mongodb"
 import { usersCollection } from "@/lib/db/collections"
 import { mapUser } from "@/lib/db/mappers"
 import { hashPassword } from "@/lib/auth/password"
-import { isSystemAdmin, normalizePermissions } from "@/lib/auth/permissions"
+import { isSystemAdmin } from "@/lib/auth/permissions"
 import { findRoleBySlug, listRoles } from "@/lib/repositories/roles"
-import type { UserDocument } from "@/lib/db/documents"
-import type { AccessStatus, Permission, ResourceAccess, Role, UserRecord, OrgMembership, AccessGrant } from "@/types/domain"
-import { ALL_RESOURCE_ACCESS, resolveResourceAccess, scopePathForAccess } from "@/lib/auth/resource-access"
-import { membershipsFromAccess } from "@/lib/auth/compile-grants"
+import { membershipsForUser } from "@/lib/auth/membership"
 import { normalizeMemberships } from "@/lib/auth/grants"
+import type { UserDocument } from "@/lib/db/documents"
+import type { AccessStatus, Role, UserRecord, OrgMembership, AccessGrant } from "@/types/domain"
 
 export type UserWriteInput = {
 	name: string
@@ -18,17 +17,13 @@ export type UserWriteInput = {
 	role: Role
 	orgId: string
 	orgSlug: string
-	organization?: string | null
-	scopePath?: string
 	tags?: string[]
 	accessStatus?: AccessStatus
-	resourceAccess?: ResourceAccess
 	emailVerified?: boolean
 	passwordReady?: boolean
 	inviteTokenHash?: string | null
 	inviteExpiresAt?: Date | null
 	inviteAcceptedAt?: Date | null
-	extraPermissions?: Permission[]
 	memberships?: OrgMembership[]
 	extraGrants?: AccessGrant[]
 }
@@ -38,13 +33,10 @@ export type UserPatchInput = {
 	role?: Role
 	orgId?: string
 	orgSlug?: string
-	organization?: string | null
-	scopePath?: string
 	tags?: string[]
 	isActive?: boolean
 	password?: string
 	accessStatus?: AccessStatus
-	resourceAccess?: ResourceAccess
 	emailVerified?: boolean
 	passwordReady?: boolean
 	inviteTokenHash?: string | null
@@ -53,7 +45,6 @@ export type UserPatchInput = {
 	emailOtpHash?: string | null
 	emailOtpExpiresAt?: Date | null
 	deletedAt?: Date | null
-	extraPermissions?: Permission[]
 	memberships?: OrgMembership[]
 	extraGrants?: AccessGrant[]
 }
@@ -106,8 +97,20 @@ export async function countLiveSystemAdmins(): Promise<number> {
 	return records.filter((user) => isSystemAdmin(user)).length
 }
 
+async function resolveStoredMemberships(input: UserWriteInput, rolePermissions: readonly string[]): Promise<OrgMembership[]> {
+	if (input.memberships?.length) {
+		return normalizeMemberships(input.memberships)
+	}
+	return membershipsForUser({
+		roleSlug: input.role,
+		rolePermissions,
+		homeOrgSlug: input.orgSlug,
+	})
+}
+
 export async function createUser(input: UserWriteInput): Promise<UserRecord> {
 	const users = await usersCollection()
+	const role = await findRoleBySlug(input.role)
 	const now = new Date()
 	const passwordReady = input.passwordReady ?? Boolean(input.password)
 	const doc: Omit<UserDocument, "_id"> = {
@@ -117,33 +120,15 @@ export async function createUser(input: UserWriteInput): Promise<UserRecord> {
 		role: input.role,
 		orgId: new ObjectId(input.orgId),
 		orgSlug: input.orgSlug,
-		organization: input.organization ?? null,
-		scopePath: input.scopePath ?? scopePathForAccess(input.resourceAccess ?? ALL_RESOURCE_ACCESS),
 		tags: input.tags ?? [],
 		isActive: true,
 		accessStatus: input.accessStatus ?? "invited",
-		resourceAccess: resolveResourceAccess({
-			resourceAccess: input.resourceAccess,
-			scopePath: input.scopePath,
-			orgSlug: input.orgSlug,
-			extraPermissions: input.extraPermissions,
-		}),
+		memberships: await resolveStoredMemberships(input, role?.permissions ?? []),
+		extraGrants: input.extraGrants ?? [],
 		emailVerified: input.emailVerified ?? false,
 		passwordReady,
 		inviteExpiresAt: input.inviteExpiresAt ?? null,
 		inviteAcceptedAt: input.inviteAcceptedAt ?? null,
-		extraPermissions: normalizePermissions(input.extraPermissions),
-		memberships: normalizeMemberships(
-			Array.isArray(input.memberships)
-				? input.memberships
-				: membershipsFromAccess({
-					role: input.role,
-					resourceAccess: input.resourceAccess,
-					orgSlug: input.orgSlug,
-					permissions: input.extraPermissions,
-				}),
-		),
-		extraGrants: input.extraGrants ?? [],
 		deletedAt: null,
 		createdAt: now,
 		updatedAt: now,
@@ -168,8 +153,6 @@ export async function updateUser(id: string, input: UserPatchInput): Promise<Use
 	if (input.role !== undefined) $set.role = input.role
 	if (input.orgId !== undefined) $set.orgId = new ObjectId(input.orgId)
 	if (input.orgSlug !== undefined) $set.orgSlug = input.orgSlug
-	if (input.organization !== undefined) $set.organization = input.organization
-	if (input.scopePath !== undefined) $set.scopePath = input.scopePath
 	if (input.tags !== undefined) $set.tags = input.tags
 	if (input.isActive !== undefined) $set.isActive = input.isActive
 	if (input.deletedAt !== undefined) $set.deletedAt = input.deletedAt
@@ -187,13 +170,8 @@ export async function updateUser(id: string, input: UserPatchInput): Promise<Use
 	if (input.inviteAcceptedAt !== undefined) $set.inviteAcceptedAt = input.inviteAcceptedAt
 	if (input.emailOtpHash !== undefined) $set.emailOtpHash = input.emailOtpHash
 	if (input.emailOtpExpiresAt !== undefined) $set.emailOtpExpiresAt = input.emailOtpExpiresAt
-	if (input.extraPermissions !== undefined) $set.extraPermissions = normalizePermissions(input.extraPermissions)
 	if (input.memberships !== undefined) $set.memberships = normalizeMemberships(input.memberships)
 	if (input.extraGrants !== undefined) $set.extraGrants = input.extraGrants
-	if (input.resourceAccess !== undefined) {
-		$set.resourceAccess = input.resourceAccess
-		$set.scopePath = scopePathForAccess(input.resourceAccess)
-	}
 	if (input.password) {
 		$set.passwordHash = await hashPassword(input.password)
 		$set.passwordReady = true

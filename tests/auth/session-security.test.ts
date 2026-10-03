@@ -37,6 +37,7 @@ describe("session JWT — tamper and privilege cases", () => {
 		const user = sessionUser({
 			permissions: ["system:admin"],
 			grants: [grant("system", "admin")],
+			grantKeys: ["system=admin"],
 			canAccessAdmin: true,
 		})
 		const token = await createSessionToken(user)
@@ -53,7 +54,14 @@ describe("session JWT — tamper and privilege cases", () => {
 			role: "viewer",
 			roleRank: 10,
 			permissions: ["dashboard:read", "machines:read"],
-			grants: [grant("dashboard", "view", { org: "bear-and-berry" }), grant("machines", "view", { org: "bear-and-berry" })],
+			grants: [
+				grant("dashboard", "view", { org: "bear-and-berry" }),
+				grant("machines", "view", { org: "bear-and-berry" }),
+			],
+			grantKeys: [
+				"dashboard-org:bear-and-berry=view",
+				"machines-org:bear-and-berry-tag:*-location:*=view",
+			],
 		})
 		const restored = await readSessionToken(await createSessionToken(user))
 		expect(hasPermission(restored, "machines:read")).toBe(true)

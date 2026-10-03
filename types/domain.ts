@@ -13,18 +13,6 @@ export type AccessStatus = (typeof ACCESS_STATUSES)[number]
 export const INVITE_STATES = ["none", "pending", "expired", "accepted"] as const
 export type InviteState = (typeof INVITE_STATES)[number]
 
-export const ACCESS_MODES = ["all", "limited"] as const
-export type AccessMode = (typeof ACCESS_MODES)[number]
-
-export type ResourceAccess = {
-	mode: AccessMode
-	organizationSlugs: string[]
-	organizationTags: string[]
-	locationIds: string[]
-	machineIds: string[]
-	machineTags: string[]
-}
-
 export const PERMISSIONS = [
 	"dashboard:read",
 	"leads:read",
@@ -113,16 +101,15 @@ export type UserRecord = {
 	role: Role
 	roleName: string
 	roleRank: number
+	/** Primary organization document id (home org for login defaults). */
 	orgId: string
+	/** Denormalized slug of the home organization. */
 	orgSlug: string
-	organization: string | null
-	scopePath: string
 	tags: string[]
 	isActive: boolean
 	accessStatus: AccessStatus
-	resourceAccess: ResourceAccess
+	/** Which orgs (or org tags) this user's role permissions attach to. */
 	memberships: OrgMembership[]
-	extraPermissions: Permission[]
 	extraGrants: AccessGrant[]
 	grants: AccessGrant[]
 	grantKeys: string[]
@@ -145,12 +132,9 @@ export type SessionUser = {
 	roleRank: number
 	orgId: string
 	orgSlug: string
-	scopePath: string
 	tags: string[]
 	accessStatus: AccessStatus
-	resourceAccess: ResourceAccess
 	memberships: OrgMembership[]
-	extraPermissions: Permission[]
 	extraGrants: AccessGrant[]
 	grants: AccessGrant[]
 	grantKeys: string[]

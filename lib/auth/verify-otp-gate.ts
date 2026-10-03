@@ -1,5 +1,5 @@
 export type VerifyOtpGateUser = {
-	emailVerified: boolean
+	emailVerified?: boolean
 	emailOtpExpiresAt?: Date | null
 	emailOtpHash?: string | null
 }

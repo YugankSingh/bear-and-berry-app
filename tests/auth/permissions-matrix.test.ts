@@ -60,11 +60,11 @@ describe("hasPermission matrix", () => {
 		}
 	})
 
-	it("system:admin via extraPermissions grants every permission", () => {
+	it("system:admin grant grants every permission", () => {
 		const user = sessionUser({
-			permissions: ["dashboard:read"],
-			extraPermissions: ["system:admin"],
+			permissions: ["system:admin", "dashboard:read"],
 			grants: [grant("system", "admin")],
+			grantKeys: ["system=admin"],
 		})
 		for (const permission of PERMISSIONS) {
 			expect(hasPermission(user, permission)).toBe(true)
