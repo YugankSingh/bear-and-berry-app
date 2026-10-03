@@ -108,6 +108,7 @@ export type LocationDocument = {
 	siteType: SiteType
 	footfallDaily: number | null
 	orgId: ObjectId
+	orgSlug: string
 	path: string
 	tags: string[]
 	createdAt: Date
@@ -122,6 +123,7 @@ export type MachineDocument = {
 	status: MachineStatus
 	locationId: ObjectId | null
 	orgId: ObjectId
+	orgSlug: string
 	path: string
 	tags: string[]
 	uptimePercent: number
@@ -134,6 +136,7 @@ export type MachineDocument = {
 export type InventorySlotDocument = {
 	_id: ObjectId
 	machineId: ObjectId
+	machineName: string
 	slotIndex: number
 	sku: string
 	label: string

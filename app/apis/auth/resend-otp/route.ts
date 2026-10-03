@@ -3,13 +3,11 @@ import { createEmailOtp } from "@/lib/auth/tokens"
 import { sendSignupOtpEmail } from "@/lib/mail/auth-mail"
 import { shouldResendOtp } from "@/lib/auth/resend-otp-gate"
 import { findUserByEmail, updateUser } from "@/lib/repositories/users"
-import { ensureDatabaseReady } from "@/lib/seed"
 import { ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
 export async function POST(request: Request) {
 	try {
-		await ensureDatabaseReady()
 		const body = resendOtpSchema.parse(await readJson(request))
 		const user = await findUserByEmail(body.email)
 		if (!shouldResendOtp(user)) {

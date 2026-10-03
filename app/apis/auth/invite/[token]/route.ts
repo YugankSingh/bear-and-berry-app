@@ -1,7 +1,6 @@
 import { hashSecret } from "@/lib/auth/tokens"
 import { authorizeInviteLookup } from "@/lib/auth/invite-lookup-gate"
 import { findUserByInviteTokenHash } from "@/lib/repositories/users"
-import { ensureDatabaseReady } from "@/lib/seed"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError } from "@/lib/api/guard"
 
@@ -11,7 +10,6 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
 	try {
-		await ensureDatabaseReady()
 		const { token } = await context.params
 		const user = await findUserByInviteTokenHash(hashSecret(token))
 		const gate = authorizeInviteLookup(user)

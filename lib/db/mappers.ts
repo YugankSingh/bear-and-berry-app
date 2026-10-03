@@ -114,7 +114,7 @@ export function mapLocation(doc: LocationDocument): LocationRecord {
 		siteType: doc.siteType,
 		footfallDaily: doc.footfallDaily,
 		orgId: doc.orgId.toHexString(),
-		orgSlug: orgSlugFromPath(doc.path),
+		orgSlug: doc.orgSlug || orgSlugFromPath(doc.path),
 		path: doc.path,
 		tags: doc.tags,
 		createdAt: toIso(doc.createdAt),
@@ -135,7 +135,7 @@ export function mapMachine(
 		locationId: doc.locationId ? doc.locationId.toHexString() : null,
 		locationName,
 		orgId: doc.orgId.toHexString(),
-		orgSlug: orgSlugFromPath(doc.path),
+		orgSlug: doc.orgSlug || orgSlugFromPath(doc.path),
 		path: doc.path,
 		tags: doc.tags,
 		uptimePercent: doc.uptimePercent,
@@ -148,12 +148,12 @@ export function mapMachine(
 
 export function mapInventorySlot(
 	doc: InventorySlotDocument,
-	machineName: string,
+	machineName?: string,
 ): InventorySlotRecord {
 	return {
 		id: doc._id.toHexString(),
 		machineId: doc.machineId.toHexString(),
-		machineName,
+		machineName: machineName ?? doc.machineName ?? "Unknown machine",
 		slotIndex: doc.slotIndex,
 		sku: doc.sku,
 		label: doc.label,

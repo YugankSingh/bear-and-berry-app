@@ -5,9 +5,7 @@ import type { LeadCommentDocument, LeadDocument } from "@/lib/db/documents"
 import { normalizeLeadPayload, type LeadIngestInput } from "@/lib/validations/lead"
 import type { LeadRecord, LeadStatus } from "@/types/domain"
 
-const ACTIVE_FILTER = {
-	$or: [{ archivedAt: { $exists: false } }, { archivedAt: null }],
-}
+const ACTIVE_FILTER = { archivedAt: null }
 
 const ARCHIVED_FILTER = { archivedAt: { $type: "date" as const } }
 

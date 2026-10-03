@@ -81,6 +81,9 @@ export async function ensureIndexes(): Promise<void> {
 
 	await Promise.all([
 		users.createIndex({ email: 1 }, { unique: true }),
+		users.createIndex({ deletedAt: 1, createdAt: -1 }),
+		users.createIndex({ orgSlug: 1, deletedAt: 1, createdAt: -1 }),
+		users.createIndex({ role: 1, deletedAt: 1, isActive: 1 }),
 		roles.createIndex({ slug: 1 }, { unique: true }),
 		permissions.createIndex({ key: 1 }, { unique: true }),
 		leads.createIndex({ createdAt: -1 }),
@@ -89,21 +92,24 @@ export async function ensureIndexes(): Promise<void> {
 		recipients.createIndex({ email: 1 }, { unique: true }),
 		machines.createIndex({ serialNumber: 1 }, { unique: true }),
 		machines.createIndex({ path: 1 }),
+		machines.createIndex({ orgSlug: 1, name: 1 }),
+		machines.createIndex({ orgSlug: 1, status: 1 }),
+		machines.createIndex({ locationId: 1 }),
+		machines.createIndex({ orgId: 1 }),
 		locations.createIndex({ path: 1 }),
 		locations.createIndex({ name: 1, city: 1 }),
+		locations.createIndex({ orgSlug: 1, name: 1 }),
+		locations.createIndex({ orgId: 1 }),
 		inventory.createIndex({ machineId: 1, slotIndex: 1 }, { unique: true }),
 		orgs.createIndex({ slug: 1 }, { unique: true }),
+		orgs.createIndex({ tags: 1 }),
+		orgs.createIndex({ name: 1 }),
 		blogs.createIndex({ slug: 1 }, { unique: true }),
 		blogs.createIndex({ status: 1, publishedAt: -1 }),
 	])
 }
 
 async function ensureInviteTokenHashIndex(users: Collection<UserDocument>): Promise<void> {
-	await users.updateMany(
-		{ $or: [{ inviteTokenHash: null }, { inviteTokenHash: "" }] },
-		{ $unset: { inviteTokenHash: "" } },
-	)
-
 	const indexes = await users.indexes()
 	const current = indexes.find((index) => index.name === "inviteTokenHash_1")
 	const partialType = (current?.partialFilterExpression as { inviteTokenHash?: { $type?: string } } | undefined)

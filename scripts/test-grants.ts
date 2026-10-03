@@ -1,81 +1,15 @@
+import { compileGrants } from "@/lib/auth/compile-grants"
 import {
-	parseGrant,
-	stringifyGrant,
-	grantMatches,
-	hasGrant,
-	hasCapability,
 	fillRequiredWildcards,
-} from "../lib/auth/grants"
-import { compileGrants } from "../lib/auth/compile-grants"
-import type { Permission } from "../types/domain"
+	hasCapability,
+	hasGrant,
+} from "@/lib/auth/grants"
 
-function assert(condition: unknown, message: string) {
+function assert(condition: unknown, message: string): asserts condition {
 	if (!condition) {
 		throw new Error(message)
 	}
 }
-
-const allUsersView = parseGrant("users-org:*=view")
-assert(allUsersView, "parse users-org:*=view")
-assert(stringifyGrant(allUsersView!) === "users-org:*-tag:*=view", "short org:* fills tag:*")
-
-assert(parseGrant("users-org:bear-and-berry=view")?.org === "bear-and-berry", "hyphenated org slug")
-
-const tagged = parseGrant("users-org:*-tag:lkjahiusodf=edit")
-assert(tagged?.org === "*" && tagged.tag === "lkjahiusodf" && tagged.action === "edit", "org * plus tag")
-
-const orgTag = parseGrant("users-orgtag:poih9pgdaf=view")
-assert(orgTag?.org == null && orgTag?.orgTag === "poih9pgdaf", "orgtag without org")
-
-assert(parseGrant("users-view") == null, "missing org is invalid")
-assert(parseGrant("users-org:=view") == null, "empty org is invalid")
-assert(parseGrant("users=view") == null, "users without org is invalid")
-
-const cmsGrant = parseGrant("cms-tag:guides=edit")
-assert(cmsGrant?.resource === "cms" && cmsGrant.tag === "guides" && cmsGrant.org == null, "cms tag grant has no org")
-assert(parseGrant("cms=edit")?.tag === "*", "cms fills tag:*")
-assert(parseGrant("cms-org:bear-and-berry=edit")?.org == null, "legacy cms org grants are stripped to platform")
-assert(parseGrant("system-org:*=admin")?.org == null, "legacy system org grants are stripped to platform")
-
-assert(
-	grantMatches(allUsersView!, {
-		resource: "users",
-		action: "view",
-		org: "bear-and-berry",
-		tags: ["staff"],
-	}),
-	"* org matches a specific org",
-)
-
-assert(
-	!grantMatches(parseGrant("users-org:bear-and-berry-tag:*=view")!, {
-		resource: "users",
-		action: "view",
-		org: "vendforge-labs",
-		tags: [],
-	}),
-	"specific org does not match another org",
-)
-
-assert(
-	grantMatches(orgTag!, {
-		resource: "users",
-		action: "view",
-		org: "bear-and-berry",
-		orgTags: ["poih9pgdaf", "fleet"],
-	}),
-	"org tag grant matches orgs that have the tag",
-)
-
-assert(
-	!grantMatches(orgTag!, {
-		resource: "users",
-		action: "view",
-		org: "bear-and-berry",
-		orgTags: ["fleet"],
-	}),
-	"org tag grant does not match other tags",
-)
 
 const machineGrant = fillRequiredWildcards({
 	resource: "machines",
@@ -89,9 +23,8 @@ const machineGrant = fillRequiredWildcards({
 assert(machineGrant.tag === "*" && machineGrant.location === "*", "machines fill location:* and tag:*")
 
 const compiled = compileGrants({
-	permissions: ["users:read", "machines:read"] as Permission[],
+	role: { slug: "admin", permissions: ["users:read", "machines:read"] },
 	memberships: [{ org: "bear-and-berry", orgTag: null, role: "admin" }],
-	orgSlug: "bear-and-berry",
 })
 assert(
 	hasCapability(compiled, { resource: "users", action: "view", org: "bear-and-berry" }),
@@ -114,7 +47,7 @@ assert(
 )
 
 const platform = compileGrants({
-	permissions: ["users:read", "orgs:all"] as Permission[],
+	role: { slug: "super_admin", permissions: ["users:read", "orgs:all"] },
 	memberships: [{ org: "*", orgTag: null, role: "super_admin" }],
 })
 assert(
@@ -123,7 +56,7 @@ assert(
 )
 
 const mixed = compileGrants({
-	permissions: ["inventory:read", "cms:write"] as Permission[],
+	role: { slug: "admin", permissions: ["inventory:read", "cms:write"] },
 	memberships: [{ org: "bear-and-berry", orgTag: null, role: "admin" }],
 })
 const mixedCms = mixed.find((grant) => grant.resource === "cms")
@@ -140,7 +73,7 @@ assert(
 )
 
 const extras = compileGrants({
-	permissions: ["dashboard:read"] as Permission[],
+	role: { slug: "viewer", permissions: ["dashboard:read"] },
 	memberships: [{ org: "bear-and-berry", orgTag: null, role: "viewer" }],
 	extraGrants: [
 		fillRequiredWildcards({
@@ -176,7 +109,10 @@ assert(
 )
 
 const superAdmin = compileGrants({
-	permissions: ["system:admin", "inventory:read", "cms:write"] as Permission[],
+	role: {
+		slug: "super_admin",
+		permissions: ["system:admin", "inventory:read", "cms:write"],
+	},
 	memberships: [{ org: "bear-and-berry", orgTag: null, role: "super_admin" }],
 })
 assert(

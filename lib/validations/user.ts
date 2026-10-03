@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ACCESS_STATUSES, PERMISSIONS } from "@/types/domain"
+import { ACCESS_STATUSES } from "@/types/domain"
 import { GRANT_ACTIONS, GRANT_RESOURCES, fillRequiredWildcards, validateGrant } from "@/lib/auth/grants"
 
 export const membershipSchema = z

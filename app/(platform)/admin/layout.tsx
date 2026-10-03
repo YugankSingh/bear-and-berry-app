@@ -3,7 +3,6 @@ import { redirectTo } from "@/lib/auth/next-path"
 import { getSessionUser, hasSessionCookie } from "@/lib/auth/session"
 import { visibleNavItems } from "@/lib/auth/rbac"
 import { ORGANIZATION_ROOT } from "@/lib/auth/org-path"
-import { ensureDatabaseReady } from "@/lib/seed"
 import { getAppEnvironment } from "@/lib/env"
 import { Sidebar } from "@/components/layout/sidebar"
 import { ViewportLock } from "@/components/layout/viewport-lock"
@@ -15,12 +14,6 @@ export default async function AdminLayout({
 }: Readonly<{
 	children: React.ReactNode
 }>) {
-	try {
-		await ensureDatabaseReady()
-	} catch (error) {
-		console.error("bootstrap failed", error)
-	}
-
 	const user = await getSessionUser()
 	if (!user) {
 		redirectTo((await hasSessionCookie()) ? "/apis/auth/logout" : "/login")

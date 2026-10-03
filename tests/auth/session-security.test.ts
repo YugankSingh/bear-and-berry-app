@@ -31,7 +31,7 @@ describe("session JWT — tamper and privilege cases", () => {
 		expect(await readSessionToken(forged)).toBeNull()
 	})
 
-	it("preserves permissions from claims but system:admin still short-circuits checks", async () => {
+	it("derives system:admin from compiled grants and short-circuits checks", async () => {
 		process.env.AUTH_SECRET = SECRET
 		process.env.APP_ENV = "development"
 		const user = sessionUser({
@@ -43,6 +43,7 @@ describe("session JWT — tamper and privilege cases", () => {
 		const token = await createSessionToken(user)
 		const restored = await readSessionToken(token)
 		expect(restored).toBeTruthy()
+		expect(restored?.permissions).toContain("system:admin")
 		expect(hasPermission(restored, "leads:delete")).toBe(true)
 		expect(hasPermission(restored, "roles:write")).toBe(true)
 	})

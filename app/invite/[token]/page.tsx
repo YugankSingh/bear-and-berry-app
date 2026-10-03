@@ -4,7 +4,6 @@ import { AcceptInviteForm } from "@/components/auth/accept-invite-form"
 import { resolveInviteState } from "@/lib/auth/access"
 import { hashSecret } from "@/lib/auth/tokens"
 import { findUserByInviteTokenHash } from "@/lib/repositories/users"
-import { ensureDatabaseReady } from "@/lib/seed"
 import Link from "next/link"
 
 export const metadata: Metadata = {
@@ -17,12 +16,6 @@ type InvitePageProps = {
 
 export default async function InviteAcceptPage({ params }: InvitePageProps) {
 	const { token } = await params
-	try {
-		await ensureDatabaseReady()
-	} catch {
-		// page can still render an error state
-	}
-
 	const user = await findUserByInviteTokenHash(hashSecret(token)).catch(() => null)
 	const inviteState = user ? resolveInviteState(user) : "none"
 

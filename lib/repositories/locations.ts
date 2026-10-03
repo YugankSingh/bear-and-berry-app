@@ -2,9 +2,14 @@ import { ObjectId } from "mongodb"
 import { locationsCollection } from "@/lib/db/collections"
 import { mapLocation } from "@/lib/db/mappers"
 import { joinScopePath } from "@/lib/auth/scope"
+import { orgSlugFromPath } from "@/lib/auth/fleet-access"
 import type { LocationDocument } from "@/lib/db/documents"
 import type { LocationCreateInput, LocationPatchInput } from "@/lib/validations/location"
 import type { LocationRecord } from "@/types/domain"
+
+export type LocationListOptions = {
+	orgSlugs?: string[]
+}
 
 export async function findLocationById(id: string): Promise<LocationRecord | null> {
 	if (!ObjectId.isValid(id)) {
@@ -15,9 +20,13 @@ export async function findLocationById(id: string): Promise<LocationRecord | nul
 	return doc ? mapLocation(doc) : null
 }
 
-export async function listLocations(): Promise<LocationRecord[]> {
+export async function listLocations(options: LocationListOptions = {}): Promise<LocationRecord[]> {
 	const locations = await locationsCollection()
-	const docs = await locations.find({}).sort({ name: 1 }).toArray()
+	const filter =
+		options.orgSlugs && options.orgSlugs.length > 0
+			? { orgSlug: { $in: options.orgSlugs } }
+			: {}
+	const docs = await locations.find(filter).sort({ name: 1 }).toArray()
 	return docs.map(mapLocation)
 }
 
@@ -41,6 +50,7 @@ export async function createLocation(
 		siteType: input.siteType,
 		footfallDaily: input.footfallDaily ?? null,
 		orgId: new ObjectId(orgId),
+		orgSlug: input.orgSlug,
 		path,
 		tags: input.tags ?? [],
 		createdAt: now,
@@ -76,7 +86,8 @@ export async function updateLocation(
 	const nextName = input.name ?? current.name
 	const nextCity = input.city ?? current.city
 	const nextRegion = input.region ?? current.region
-	const orgSlug = current.path.split("/").filter(Boolean)[0] ?? "bear-and-berry"
+	const orgSlug = current.orgSlug || orgSlugFromPath(current.path) || "bear-and-berry"
+	$set.orgSlug = orgSlug
 	$set.path = joinScopePath([orgSlug, nextRegion, nextCity, nextName])
 
 	const result = await locations.findOneAndUpdate(

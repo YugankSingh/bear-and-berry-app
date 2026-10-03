@@ -1,11 +1,11 @@
 import { userCreateSchema } from "@/lib/validations/user"
-import { createUser, findUserByEmail, listUsers, toUserRecord, updateUser } from "@/lib/repositories/users"
+import { createUser, findUserByEmail, listUsers, toUserRecord } from "@/lib/repositories/users"
 import { findRoleBySlug } from "@/lib/repositories/roles"
 import { listOrganizations } from "@/lib/repositories/organizations"
 import { requirePermission } from "@/lib/auth/require-auth"
 import { isUserRemoved, resolveAccessStatus } from "@/lib/auth/access"
 import { canGrantAccessGrants, hasPermission } from "@/lib/auth/permissions"
-import { issueInvite } from "@/lib/auth/invite"
+import { issueInvite, prepareInviteToken, scheduleInviteEmail } from "@/lib/auth/invite"
 import { resolveMembership } from "@/lib/auth/membership"
 import { canAssignRole, canManageUser, canSeeTeamMember, canGrantMemberships } from "@/lib/auth/team-access"
 import { fail, ok } from "@/lib/api/response"
@@ -56,7 +56,6 @@ export async function POST(request: Request) {
 		}
 
 		const existing = await findUserByEmail(body.email)
-		let userId: string
 
 		const assignment = {
 			name: body.name,
@@ -78,44 +77,65 @@ export async function POST(request: Request) {
 				return fail("FORBIDDEN", "You cannot manage that account.", 403)
 			}
 
-			const updated = await updateUser(existing._id.toHexString(), {
-				...assignment,
-				tags: body.tags ?? existing.tags,
-			})
-			if (!updated) {
-				return fail("SERVER_ERROR", "Could not grant access to that account.", 500)
-			}
-			userId = updated.id
-		} else if (existing && isUserRemoved(existing)) {
-			const updated = await updateUser(existing._id.toHexString(), {
-				...assignment,
-				tags: body.tags ?? existing.tags,
-				emailVerified: false,
-				passwordReady: false,
-				inviteAcceptedAt: null,
-			})
-			if (!updated) {
-				return fail("SERVER_ERROR", "Could not restore that account.", 500)
-			}
-			userId = updated.id
-		} else {
-			const created = await createUser({
-				...assignment,
+			const invite = await issueInvite(existing._id.toHexString(), {
 				email: body.email,
-				tags: body.tags ?? [],
-				emailVerified: false,
-				passwordReady: false,
+				name: body.name,
+				patch: {
+					...assignment,
+					tags: body.tags ?? existing.tags,
+				},
 			})
-			userId = created.id
+			return ok({
+				user: invite.user,
+				inviteSent: true,
+				inviteExpiresAt: invite.expiresAt.toISOString(),
+			})
 		}
 
-		const invite = await issueInvite(userId)
-		const user = await findUserByEmail(body.email)
-		return ok({
-			user: user && !isUserRemoved(user) ? await toUserRecord(user) : undefined,
-			inviteSent: invite.sent,
-			inviteExpiresAt: invite.expiresAt.toISOString(),
-		}, existing ? 200 : 201)
+		if (existing && isUserRemoved(existing)) {
+			const invite = await issueInvite(existing._id.toHexString(), {
+				email: body.email,
+				name: body.name,
+				patch: {
+					...assignment,
+					tags: body.tags ?? existing.tags,
+					emailVerified: false,
+					passwordReady: false,
+					inviteAcceptedAt: null,
+					deletedAt: null,
+					isActive: true,
+				},
+			})
+			return ok({
+				user: invite.user,
+				inviteSent: true,
+				inviteExpiresAt: invite.expiresAt.toISOString(),
+			})
+		}
+
+		const invite = prepareInviteToken()
+		const created = await createUser({
+			...assignment,
+			email: body.email,
+			tags: body.tags ?? [],
+			emailVerified: false,
+			passwordReady: false,
+			inviteTokenHash: invite.tokenHash,
+			inviteExpiresAt: invite.expiresAt,
+		})
+		scheduleInviteEmail({
+			to: body.email,
+			name: body.name,
+			token: invite.token,
+		})
+		return ok(
+			{
+				user: created,
+				inviteSent: true,
+				inviteExpiresAt: invite.expiresAt.toISOString(),
+			},
+			201,
+		)
 	} catch (error) {
 		return handleApiError(error)
 	}

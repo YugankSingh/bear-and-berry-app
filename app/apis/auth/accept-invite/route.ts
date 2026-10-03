@@ -2,15 +2,13 @@ import { acceptInviteSchema } from "@/lib/validations/auth"
 import { resolveAccessStatus } from "@/lib/auth/access"
 import { authorizeAcceptInvite } from "@/lib/auth/accept-invite-gate"
 import { hashSecret } from "@/lib/auth/tokens"
-import { setSessionCookie, toSessionUser } from "@/lib/auth/session"
+import { hydrateAuthUser, setSessionCookie } from "@/lib/auth/session"
 import { findUserByInviteTokenHash, updateUser } from "@/lib/repositories/users"
-import { ensureDatabaseReady } from "@/lib/seed"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
 export async function POST(request: Request) {
 	try {
-		await ensureDatabaseReady()
 		const body = acceptInviteSchema.parse(await readJson(request))
 		const user = await findUserByInviteTokenHash(hashSecret(body.token))
 		const gate = authorizeAcceptInvite(user, Boolean(body.password))
@@ -48,7 +46,8 @@ export async function POST(request: Request) {
 			inviteTokenHash: null,
 			inviteExpiresAt: null,
 		}
-		await setSessionCookie(await toSessionUser(accepted))
+		const { session } = await hydrateAuthUser(accepted)
+		await setSessionCookie(session)
 		return ok({
 			user: updated,
 			accessStatus: resolveAccessStatus("invited"),

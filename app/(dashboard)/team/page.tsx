@@ -38,7 +38,7 @@ export default async function TeamPage() {
 
 	try {
 		const [allUsers, fleet, allRoles, permissions] = await Promise.all([
-			listUsers(),
+			listUsers(user.activeOrgSlug ? { orgSlug: user.activeOrgSlug } : {}),
 			loadVisibleFleet(user),
 			listRoles(),
 			listPermissionCatalog(),

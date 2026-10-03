@@ -4,18 +4,16 @@ import { isUserRemoved, resolveAccessStatus } from "@/lib/auth/access"
 import { nextAuthStep } from "@/lib/auth/lookup"
 import { createEmailOtp } from "@/lib/auth/tokens"
 import { BEAR_AND_BERRY_SLUG } from "@/lib/auth/scope"
-import { setSessionCookie, toSessionUser } from "@/lib/auth/session"
+import { hydrateAuthUser, setSessionCookie } from "@/lib/auth/session"
 import { sendSignupOtpEmail } from "@/lib/mail/auth-mail"
-import { countUsers, createUser, findUserByEmail, toUserRecord, updateUser } from "@/lib/repositories/users"
+import { countUsers, createUser, findUserByEmail, updateUser } from "@/lib/repositories/users"
 import { findSignupRole } from "@/lib/repositories/roles"
 import { findOrganizationBySlug } from "@/lib/repositories/organizations"
-import { ensureDatabaseReady } from "@/lib/seed"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
 export async function POST(request: Request) {
 	try {
-		await ensureDatabaseReady()
 		const body = signupSchema.parse(await readJson(request))
 		const existing = await findUserByEmail(body.email)
 
@@ -43,10 +41,10 @@ export async function POST(request: Request) {
 				name: body.name,
 			})
 			if (user) {
-				const session = await toSessionUser(user)
+				const { session, record } = await hydrateAuthUser(user)
 				await setSessionCookie(session)
 				return ok({
-					user: await toUserRecord(user),
+					user: record,
 					accessStatus: resolveAccessStatus(user.accessStatus),
 					needsVerification: false,
 				}, 201)

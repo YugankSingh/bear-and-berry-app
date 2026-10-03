@@ -103,7 +103,6 @@ export function compileGrants(input: CompileGrantInput): AccessGrant[] {
 	const roleSlug = input.role?.slug ?? "viewer"
 	const memberships = normalizeMemberships(input.memberships)
 	const extraGrants = input.extraGrants ?? []
-	const permissions = uniquePermissions([...rolePermissions, ...permissionsFromGrants(extraGrants)])
 
 	const orgBound = rolePermissions.filter(isOrgBoundPermission)
 	const platform = rolePermissions.filter((permission) => !isOrgBoundPermission(permission))

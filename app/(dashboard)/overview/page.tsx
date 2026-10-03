@@ -20,8 +20,9 @@ export default async function OverviewPage() {
 	let loadError: string | null = null
 
 	try {
-		const [fleet, slots] = await Promise.all([loadVisibleFleet(user), loadVisibleInventory(user)])
+		const fleet = await loadVisibleFleet(user)
 		machines = fleet.machines
+		const slots = await loadVisibleInventory(user, machines)
 		for (const machine of machines) {
 			machineCounts[machine.status] += 1
 			cupsToday += machine.cupsToday

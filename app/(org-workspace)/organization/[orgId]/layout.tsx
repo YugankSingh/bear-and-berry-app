@@ -2,7 +2,6 @@ import { hasDashboardAccess } from "@/lib/auth/access"
 import { redirectTo } from "@/lib/auth/next-path"
 import { getSessionUser, hasSessionCookie } from "@/lib/auth/session"
 import { visibleNavItems } from "@/lib/auth/rbac"
-import { ensureDatabaseReady } from "@/lib/seed"
 import { getAppEnvironment } from "@/lib/env"
 import { organizationPageFromPath, organizationPath, PATH_HEADER, resolveAccessibleOrg } from "@/lib/auth/workspace"
 import { Sidebar } from "@/components/layout/sidebar"
@@ -17,12 +16,6 @@ type OrgLayoutProps = {
 }
 
 export default async function OrganizationWorkspaceLayout({ children, params }: OrgLayoutProps) {
-	try {
-		await ensureDatabaseReady()
-	} catch (error) {
-		console.error("bootstrap failed", error)
-	}
-
 	const user = await getSessionUser()
 	if (!user) {
 		redirectTo((await hasSessionCookie()) ? "/apis/auth/logout" : "/login")

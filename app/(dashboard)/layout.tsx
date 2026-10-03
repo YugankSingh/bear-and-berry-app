@@ -3,7 +3,6 @@ import { hasDashboardAccess } from "@/lib/auth/access"
 import { redirectTo } from "@/lib/auth/next-path"
 import { getSessionUser, hasSessionCookie } from "@/lib/auth/session"
 import { ORGANIZATION_ROOT, PATH_HEADER, organizationPath } from "@/lib/auth/workspace"
-import { ensureDatabaseReady } from "@/lib/seed"
 
 export const dynamic = "force-dynamic"
 
@@ -20,12 +19,6 @@ export default async function DashboardLayout({
 }: Readonly<{
 	children: React.ReactNode
 }>) {
-	try {
-		await ensureDatabaseReady()
-	} catch (error) {
-		console.error("bootstrap failed", error)
-	}
-
 	const user = await getSessionUser()
 	if (!user) {
 		redirectTo((await hasSessionCookie()) ? "/apis/auth/logout" : "/login")

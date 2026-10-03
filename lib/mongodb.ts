@@ -15,6 +15,8 @@ async function getClient(): Promise<MongoClient> {
 		const client = new MongoClient(getMongoUri(), {
 			serverSelectionTimeoutMS: 3000,
 			connectTimeoutMS: 3000,
+			maxPoolSize: 10,
+			minPoolSize: 0,
 		})
 		globalForMongo.__bbMongoPromise = client.connect().then((connected) => {
 			globalForMongo.__bbMongoClient = connected

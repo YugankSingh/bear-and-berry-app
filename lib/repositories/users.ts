@@ -3,12 +3,12 @@ import { ObjectId } from "mongodb"
 import { usersCollection } from "@/lib/db/collections"
 import { mapUser } from "@/lib/db/mappers"
 import { hashPassword } from "@/lib/auth/password"
-import { isSystemAdmin } from "@/lib/auth/permissions"
+import { roleHasPermission } from "@/lib/auth/permissions"
 import { findRoleBySlug, listRoles } from "@/lib/repositories/roles"
 import { membershipsForUser } from "@/lib/auth/membership"
 import { normalizeMemberships } from "@/lib/auth/grants"
 import type { UserDocument } from "@/lib/db/documents"
-import type { AccessStatus, Role, UserRecord, OrgMembership, AccessGrant } from "@/types/domain"
+import { SYSTEM_ADMIN_PERMISSION, type AccessStatus, type Permission, type Role, type UserRecord, type OrgMembership, type AccessGrant } from "@/types/domain"
 
 export type UserWriteInput = {
 	name: string
@@ -84,20 +84,51 @@ export async function countUsers(): Promise<number> {
 	return users.countDocuments()
 }
 
-export async function listUsers(): Promise<UserRecord[]> {
+export async function countLiveUsers(): Promise<number> {
 	const users = await usersCollection()
-	const docs = await users.find(LIVE_USER_FILTER).sort({ createdAt: -1 }).toArray()
+	return users.countDocuments(LIVE_USER_FILTER)
+}
+
+export type UserListOptions = {
+	orgSlug?: string
+}
+
+export async function listUsers(options: UserListOptions = {}): Promise<UserRecord[]> {
+	const users = await usersCollection()
+	const filter = options.orgSlug
+		? {
+				...LIVE_USER_FILTER,
+				$or: [
+					{ orgSlug: options.orgSlug },
+					{ "memberships.org": options.orgSlug },
+					{ "memberships.org": "*" },
+				],
+			}
+		: LIVE_USER_FILTER
+	const docs = await users.find(filter).sort({ createdAt: -1 }).toArray()
 	return toUserRecords(docs)
 }
 
 export async function countLiveSystemAdmins(): Promise<number> {
+	const roles = await listRoles()
+	const adminRoleSlugs = roles
+		.filter((role) => roleHasPermission(role, SYSTEM_ADMIN_PERMISSION))
+		.map((role) => role.slug)
+	if (adminRoleSlugs.length === 0) {
+		return 0
+	}
 	const users = await usersCollection()
-	const docs = await users.find({ ...LIVE_USER_FILTER, isActive: true }).toArray()
-	const records = await toUserRecords(docs)
-	return records.filter((user) => isSystemAdmin(user)).length
+	return users.countDocuments({
+		...LIVE_USER_FILTER,
+		isActive: true,
+		role: { $in: adminRoleSlugs },
+	})
 }
 
-async function resolveStoredMemberships(input: UserWriteInput, rolePermissions: readonly string[]): Promise<OrgMembership[]> {
+async function resolveStoredMemberships(
+	input: UserWriteInput,
+	rolePermissions: readonly Permission[],
+): Promise<OrgMembership[]> {
 	if (input.memberships?.length) {
 		return normalizeMemberships(input.memberships)
 	}

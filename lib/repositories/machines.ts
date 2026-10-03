@@ -1,7 +1,8 @@
 import { ObjectId } from "mongodb"
-import { locationsCollection, machinesCollection } from "@/lib/db/collections"
+import { inventoryCollection, locationsCollection, machinesCollection } from "@/lib/db/collections"
 import { mapMachine } from "@/lib/db/mappers"
 import { joinScopePath } from "@/lib/auth/scope"
+import { orgSlugFromPath } from "@/lib/auth/fleet-access"
 import type { MachineDocument } from "@/lib/db/documents"
 import { findLocationsByIds } from "@/lib/repositories/locations"
 import type { MachineCreateInput, MachinePatchInput } from "@/lib/validations/machine"
@@ -12,6 +13,10 @@ function toObjectId(id: string | null | undefined): ObjectId | null {
 		return null
 	}
 	return new ObjectId(id)
+}
+
+export type MachineListOptions = {
+	orgSlugs?: string[]
 }
 
 async function resolveMachinePath(
@@ -56,9 +61,13 @@ export async function findMachineById(id: string): Promise<MachineRecord | null>
 	return mapped ?? null
 }
 
-export async function listMachines(): Promise<MachineRecord[]> {
+export async function listMachines(options: MachineListOptions = {}): Promise<MachineRecord[]> {
 	const machines = await machinesCollection()
-	const docs = await machines.find({}).sort({ name: 1 }).toArray()
+	const filter =
+		options.orgSlugs && options.orgSlugs.length > 0
+			? { orgSlug: { $in: options.orgSlugs } }
+			: {}
+	const docs = await machines.find(filter).sort({ name: 1 }).toArray()
 	return withLocations(docs)
 }
 
@@ -78,6 +87,7 @@ export async function createMachine(
 		status: input.status,
 		locationId,
 		orgId: new ObjectId(orgId),
+		orgSlug,
 		path,
 		tags: input.tags ?? [],
 		uptimePercent: input.uptimePercent,
@@ -120,7 +130,8 @@ export async function updateMachine(
 
 	const nextLocationId = input.locationId !== undefined ? toObjectId(input.locationId) : current.locationId
 	const nextSerial = input.serialNumber ?? current.serialNumber
-	const orgSlug = current.path.split("/").filter(Boolean)[0] ?? "bear-and-berry"
+	const orgSlug = current.orgSlug || orgSlugFromPath(current.path) || "bear-and-berry"
+	$set.orgSlug = orgSlug
 	$set.path = await resolveMachinePath(orgSlug, nextLocationId, nextSerial)
 
 	const result = await machines.findOneAndUpdate(
@@ -131,6 +142,12 @@ export async function updateMachine(
 	if (!result) {
 		return null
 	}
+
+	if (input.name !== undefined && input.name !== current.name) {
+		const slots = await inventoryCollection()
+		await slots.updateMany({ machineId: result._id }, { $set: { machineName: input.name } })
+	}
+
 	const [mapped] = await withLocations([result])
 	return mapped ?? null
 }

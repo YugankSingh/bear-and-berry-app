@@ -23,6 +23,11 @@ export async function listOrganizations(): Promise<OrganizationRecord[]> {
 	return docs.map(mapOrganization)
 }
 
+export async function countOrganizations(): Promise<number> {
+	const orgs = await organizationsCollection()
+	return orgs.countDocuments()
+}
+
 export async function findOrganizationBySlug(slug: string): Promise<OrganizationDocument | null> {
 	const orgs = await organizationsCollection()
 	return orgs.findOne({ slug })

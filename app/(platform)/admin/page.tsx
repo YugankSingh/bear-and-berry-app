@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
-import { listOrganizations } from "@/lib/repositories/organizations"
-import { listUsers } from "@/lib/repositories/users"
+import { countOrganizations } from "@/lib/repositories/organizations"
+import { countLiveUsers } from "@/lib/repositories/users"
 import { formatNumber } from "@/lib/format"
 import { toRoute } from "@/lib/auth/next-path"
 
@@ -15,9 +15,7 @@ export default async function AdminHomePage() {
 	let orgCount = 0
 	let userCount = 0
 	try {
-		const [orgs, users] = await Promise.all([listOrganizations(), listUsers()])
-		orgCount = orgs.length
-		userCount = users.length
+		;[orgCount, userCount] = await Promise.all([countOrganizations(), countLiveUsers()])
 	} catch (error) {
 		console.error(error)
 	}

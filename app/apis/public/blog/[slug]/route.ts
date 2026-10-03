@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { findPublishedBlogBySlug } from "@/lib/repositories/blogs"
-import { ensureDatabaseReady } from "@/lib/seed"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError } from "@/lib/api/guard"
 import { withCors } from "@/lib/api/cors"
@@ -15,7 +14,6 @@ export function OPTIONS(request: Request) {
 
 export async function GET(request: Request, context: RouteContext) {
 	try {
-		await ensureDatabaseReady()
 		const { slug } = await context.params
 		const post = await findPublishedBlogBySlug(slug)
 		if (!post) {
