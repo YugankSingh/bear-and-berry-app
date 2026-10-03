@@ -3,7 +3,7 @@ import Link from "next/link"
 import { getDashboardUser } from "@/components/layout/page-shell"
 import { BrandLockup } from "@/components/brand/brand-lockup"
 import { organizationPath } from "@/lib/auth/org-path"
-import { toRoute } from "@/lib/auth/next-path"
+import { redirectTo, toRoute } from "@/lib/auth/next-path"
 import { getAppEnvironment } from "@/lib/env"
 import { getAppEnvironmentLabel } from "@/lib/env-client"
 
@@ -14,6 +14,14 @@ export const metadata: Metadata = {
 export default async function OrganizationPickerPage() {
 	const user = await getDashboardUser()
 	const orgs = user.accessibleOrgs
+
+	// Skip the picker when there is only one place to go.
+	if (orgs.length === 0 && user.canAccessAdmin) {
+		redirectTo("/admin")
+	}
+	if (orgs.length === 1) {
+		redirectTo(organizationPath(orgs[0]!.slug, "/overview"))
+	}
 
 	return (
 		<div className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col px-6 py-10">
