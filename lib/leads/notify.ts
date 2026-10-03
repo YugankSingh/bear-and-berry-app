@@ -88,7 +88,8 @@ export async function notifyLeadIngest(lead: LeadRecord): Promise<void> {
 			`  Location & City:  ${display(lead.location)}`,
 			`  Phone:            ${display(lead.phone)}`,
 			``,
-			`In the meantime, feel free to reply to this email with any questions.`,
+			`Need to talk sooner? Call or WhatsApp us at +91 97608 58226.`,
+			`Or reply to this email with any questions.`,
 			``,
 			`— The Bear & Berry Team`,
 			`https://bearandberry.in`,
@@ -103,7 +104,7 @@ export async function notifyLeadIngest(lead: LeadRecord): Promise<void> {
             <td style="background: #1A1A1A; border-radius: 20px 20px 0 0; padding: 32px 32px 28px;">
               <p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #BD0C16;">Bear &amp; Berry</p>
               <h1 style="margin: 14px 0 0; font-family: Georgia, 'Times New Roman', Times, serif; font-size: 32px; line-height: 1.1; font-weight: 800; letter-spacing: -1px; color: #ffffff;">Thanks for<br/>reaching out.</h1>
-              <p style="margin: 14px 0 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.72);">We've got your request — something delicious is brewing.</p>
+              <p style="margin: 14px 0 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.72);">We've got your request and will be in touch shortly.</p>
             </td>
           </tr>
           <tr>
@@ -130,19 +131,24 @@ export async function notifyLeadIngest(lead: LeadRecord): Promise<void> {
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 28px 0 8px;">
                 <tr>
                   <td style="background: #BD0C16; border-radius: 999px;">
+                    <a href="tel:+919760858226" style="display: inline-block; padding: 14px 28px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.3px; color: #ffffff; text-decoration: none;">Call +91 97608 58226</a>
+                  </td>
+                  <td width="10" style="font-size: 0; line-height: 0;">&nbsp;</td>
+                  <td style="background: #1A1A1A; border-radius: 999px;">
                     <a href="https://bearandberry.in" style="display: inline-block; padding: 14px 28px; font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.3px; color: #ffffff; text-decoration: none;">Explore Bear &amp; Berry</a>
                   </td>
                 </tr>
               </table>
-              <p style="margin: 20px 0 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.7; color: #8C8C8C;">Prefer to chat sooner? Just reply to this email — we're excited to bring fresh coffee to your space.</p>
+              <p style="margin: 20px 0 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; line-height: 1.7; color: #8C8C8C;">Want to talk right away? Call or WhatsApp <a href="tel:+919760858226" style="color: #BD0C16; text-decoration: none; font-weight: 700;">+91 97608 58226</a>, or just reply to this email.</p>
               <p style="margin: 22px 0 0; font-family: Arial, Helvetica, sans-serif; font-size: 14px; color: #1A1A1A; font-weight: 700;">— The Bear &amp; Berry Team</p>
             </td>
           </tr>
           <tr>
             <td style="background: #2D1C18; border-radius: 0 0 20px 20px; padding: 18px 32px;">
               <p style="margin: 0; font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: rgba(255,255,255,0.55);">
+                <a href="tel:+919760858226" style="color: #ffffff; text-decoration: none; font-weight: 600;">+91 97608 58226</a>
+                &nbsp;·&nbsp;
                 <a href="https://bearandberry.in" style="color: #ffffff; text-decoration: none; font-weight: 600;">bearandberry.in</a>
-                &nbsp;·&nbsp; Fresh coffee, right where people already gather
               </p>
             </td>
           </tr>
