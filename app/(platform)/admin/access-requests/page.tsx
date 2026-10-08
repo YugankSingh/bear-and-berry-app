@@ -52,7 +52,7 @@ export default async function AccessRequestsPage() {
 	return (
 		<PageShell
 			title="Access requests"
-			subtitle="People who signed up and are waiting for access. They have no role or organization until approved."
+			subtitle="People who signed up and are waiting for access. Approving attaches no permissions unless you pick a role; you can change them later from Team."
 			permission="signups:read"
 		>
 			{requests.length === 0 ? (

@@ -56,6 +56,29 @@ describe("session JWT", () => {
 		expect(await readSessionToken(token)).toBeNull()
 	})
 
+	it("accepts an approved user with no role, org, or grants and gives them no permissions", async () => {
+		process.env.AUTH_SECRET = SECRET
+		const user = sessionUser({
+			role: "",
+			roleName: "No role",
+			roleRank: 0,
+			orgId: "",
+			orgSlug: "",
+			accessStatus: "invited",
+			permissions: [],
+			grants: [],
+			grantKeys: [],
+			accessibleOrgs: [],
+			canAccessAdmin: false,
+		})
+		const restored = await readSessionToken(await createSessionToken(user))
+		expect(restored?.id).toBe(user.id)
+		expect(restored?.role).toBe("")
+		expect(restored?.permissions).toEqual([])
+		expect(restored?.accessibleOrgs).toEqual([])
+		expect(restored?.canAccessAdmin).toBe(false)
+	})
+
 	it("rejects tokens signed with the wrong secret", async () => {
 		process.env.AUTH_SECRET = SECRET
 		const token = await new SignJWT({

@@ -12,6 +12,8 @@ const PLATFORM_ONLY_PERMISSIONS = new Set<Permission>([
 	"settings:write",
 	"system:admin",
 	"orgs:all",
+	// Tagging changes who else can reach an org, so it is granted explicitly, not by default.
+	"orgs:tag",
 	"roles:write",
 	"devices:pair",
 	"developer:read",

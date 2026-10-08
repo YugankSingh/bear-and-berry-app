@@ -1,5 +1,6 @@
-import { removeOrganizationTag } from "@/lib/repositories/organizations"
-import { requireOrgCatalogAccess } from "@/lib/auth/require-org-catalog"
+import { findOrganizationBySlug, removeOrganizationTag } from "@/lib/repositories/organizations"
+import { requireDashboardSession } from "@/lib/auth/require-auth"
+import { authorizeRemoveTag } from "@/lib/auth/org-tagging"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError } from "@/lib/api/guard"
 
@@ -9,10 +10,19 @@ type RouteContext = {
 
 export async function DELETE(_request: Request, context: RouteContext) {
 	try {
-		await requireOrgCatalogAccess()
+		const actor = await requireDashboardSession()
 		const { slug, tag } = await context.params
-		const decoded = decodeURIComponent(tag)
-		const organization = await removeOrganizationTag(slug, decoded)
+		const existing = await findOrganizationBySlug(slug)
+		if (!existing) {
+			return fail("NOT_FOUND", "Organization not found.", 404)
+		}
+
+		const decision = authorizeRemoveTag(actor, { slug: existing.slug, tags: existing.tags })
+		if (!decision.ok) {
+			return fail("FORBIDDEN", decision.error, decision.status)
+		}
+
+		const organization = await removeOrganizationTag(slug, decodeURIComponent(tag))
 		if (!organization) {
 			return fail("NOT_FOUND", "Organization not found.", 404)
 		}

@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-	organizationPatchSchema,
-	organizationTagSchema,
-	organizationTagsReplaceSchema,
-} from "@/lib/validations/organization"
+import { organizationPatchSchema, organizationTagSchema } from "@/lib/validations/organization"
 import { GRANT_RESOURCES, GRANT_ACTIONS, parseGrant, validateGrant, emptyGrant, fillRequiredWildcards } from "@/lib/auth/grants"
 import { resourceBinding } from "@/lib/auth/permission-scopes"
 
@@ -21,19 +17,11 @@ describe("organization tag validations — every case", () => {
 		expect(organizationTagSchema.safeParse({ tag: "partner-west" }).success).toBe(true)
 	})
 
-	it("replace schema accepts empty list and rejects bad entries", () => {
-		expect(organizationTagsReplaceSchema.safeParse({ tags: [] }).success).toBe(true)
-		expect(organizationTagsReplaceSchema.safeParse({ tags: ["fleet", "bad tag"] }).success).toBe(false)
-		expect(organizationTagsReplaceSchema.safeParse({ tags: Array.from({ length: 41 }, (_, i) => `t${i}`) }).success).toBe(
-			false,
-		)
-	})
-
-	it("patch requires at least one field", () => {
+	it("patch requires at least one field and cannot change tags", () => {
 		expect(organizationPatchSchema.safeParse({}).success).toBe(false)
 		expect(organizationPatchSchema.safeParse({ name: "Acme" }).success).toBe(true)
 		expect(organizationPatchSchema.safeParse({ kind: "partner" }).success).toBe(true)
-		expect(organizationPatchSchema.safeParse({ tags: ["fleet"] }).success).toBe(true)
+		expect(organizationPatchSchema.safeParse({ tags: ["fleet"] }).success).toBe(false)
 		expect(organizationPatchSchema.safeParse({ kind: "nope" }).success).toBe(false)
 	})
 })

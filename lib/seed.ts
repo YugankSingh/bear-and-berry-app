@@ -4,6 +4,7 @@ import { ensureDefaultRoles } from "@/lib/repositories/roles"
 import { seedLeadRecipientsIfEmpty } from "@/lib/repositories/lead-recipients"
 import { stripPendingAccessRequestGrants } from "@/lib/repositories/users"
 import { upsertOrganization } from "@/lib/repositories/organizations"
+import { backfillTagCatalog } from "@/lib/repositories/organization-tags"
 import { BEAR_AND_BERRY_SLUG, VENDFORGE_LABS_SLUG } from "@/lib/auth/scope"
 
 let readyPromise: Promise<void> | null = null
@@ -41,4 +42,5 @@ async function bootstrap(): Promise<void> {
 		kind: "internal",
 		tags: ["cms"],
 	})
+	await backfillTagCatalog()
 }

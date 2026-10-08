@@ -37,19 +37,15 @@ export function ApproveAccessButton({
 }: ApproveAccessButtonProps) {
 	const router = useRouter()
 	const [open, setOpen] = useState(false)
-	const [roleSlug, setRoleSlug] = useState(assignableRoles[0]?.slug ?? "")
-	const selectedRole = assignableRoles.find((role) => role.slug === roleSlug) ?? assignableRoles[0]
+	const [roleSlug, setRoleSlug] = useState("")
+	const selectedRole = roleSlug ? assignableRoles.find((role) => role.slug === roleSlug) : undefined
 	const [membership, setMembership] = useState<MembershipFieldsValue>(emptyMembershipFields(organizations))
 	const [extras, setExtras] = useState<ExtraGrantDraft[]>([])
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState("")
 
 	async function approve() {
-		if (!selectedRole) {
-			setError("Choose a role.")
-			return
-		}
-		const membershipBody = membershipRequest(selectedRole, membership)
+		const membershipBody = selectedRole ? membershipRequest(selectedRole, membership) : undefined
 		if (typeof membershipBody === "string") {
 			setError(membershipBody)
 			return
@@ -66,7 +62,7 @@ export function ApproveAccessButton({
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
-				role: selectedRole.slug,
+				role: selectedRole?.slug ?? "",
 				membership: membershipBody,
 				extraGrants: canGrantExtras ? extraGrants : undefined,
 			}),
@@ -104,19 +100,26 @@ export function ApproveAccessButton({
 				}}
 				className="w-full rounded-2xl border border-[#ECEAE6] bg-white px-3 py-2 text-[13px] outline-none"
 			>
+				<option value="">No role (no permissions)</option>
 				{assignableRoles.map((item) => (
 					<option key={item.slug} value={item.slug}>
 						{item.name}
 					</option>
 				))}
 			</select>
-			<MembershipFields
-				name={`approve-membership-${userId}`}
-				role={selectedRole}
-				value={membership}
-				onChange={setMembership}
-				organizations={organizations}
-			/>
+			{selectedRole ? (
+				<MembershipFields
+					name={`approve-membership-${userId}`}
+					role={selectedRole}
+					value={membership}
+					onChange={setMembership}
+					organizations={organizations}
+				/>
+			) : (
+				<p className="text-[12px] leading-[1.6] text-[#8C8C8C]">
+					They can sign in but won&apos;t see anything until you give them a role or permissions from Team.
+				</p>
+			)}
 			{canGrantExtras ? (
 				<ExtraGrantBuilder
 					drafts={extras}

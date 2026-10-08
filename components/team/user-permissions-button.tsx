@@ -64,10 +64,9 @@ export function UserPermissionsButton({
 	const router = useRouter()
 	const [open, setOpen] = useState(false)
 	const [roleSlug, setRoleSlug] = useState(user.role)
-	const selectedRole =
-		assignableRoles.find((role) => role.slug === roleSlug) ??
-		assignableRoles.find((role) => role.slug === user.role) ??
-		assignableRoles[0]
+	const selectedRole = assignableRoles.find((role) => role.slug === roleSlug)
+	/** Current role is above what this actor may assign: show it, but never send it back. */
+	const keepsLockedRole = Boolean(user.role) && roleSlug === user.role && !selectedRole
 	const [membership, setMembership] = useState<MembershipFieldsValue>(membershipFromUser(user, organizations))
 	const [extras, setExtras] = useState<ExtraGrantDraft[]>(extrasFromUser(user))
 	const [loading, setLoading] = useState(false)
@@ -81,11 +80,7 @@ export function UserPermissionsButton({
 	}
 
 	async function save() {
-		if (!selectedRole) {
-			setError("Choose a role.")
-			return
-		}
-		const membershipBody = membershipRequest(selectedRole, membership)
+		const membershipBody = selectedRole ? membershipRequest(selectedRole, membership) : undefined
 		if (typeof membershipBody === "string") {
 			setError(membershipBody)
 			return
@@ -102,8 +97,8 @@ export function UserPermissionsButton({
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
-				role: canEditMembership ? selectedRole.slug : undefined,
-				membership: canEditMembership ? membershipBody : undefined,
+				role: canEditMembership && !keepsLockedRole ? (selectedRole?.slug ?? "") : undefined,
+				membership: canEditMembership && selectedRole ? membershipBody : undefined,
 				extraGrants: canGrantExtras ? extraGrants : undefined,
 			}),
 		})
@@ -146,6 +141,10 @@ export function UserPermissionsButton({
 					}}
 					className="w-full rounded-2xl border border-[#ECEAE6] bg-white px-3 py-2 text-[13px] outline-none"
 				>
+					<option value="">No role (no permissions)</option>
+					{user.role && !assignableRoles.some((item) => item.slug === user.role) ? (
+						<option value={user.role}>{user.roleName} (current)</option>
+					) : null}
 					{assignableRoles.map((item) => (
 						<option key={item.slug} value={item.slug}>
 							{item.name}
@@ -155,7 +154,7 @@ export function UserPermissionsButton({
 			) : (
 				<p className="text-[13px] text-[#1A1A1A]">{user.roleName}</p>
 			)}
-			{canEditMembership ? (
+			{canEditMembership && selectedRole ? (
 				<MembershipFields
 					name={`edit-membership-${user.id}`}
 					role={selectedRole}

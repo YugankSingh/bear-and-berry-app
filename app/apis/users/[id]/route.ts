@@ -39,12 +39,20 @@ export async function PATCH(request: Request, context: RouteContext) {
 			return fail("FORBIDDEN", "You cannot manage a user at or above your own level.", 403)
 		}
 
-		const nextRole = body.role ? await findRoleBySlug(body.role) : await findRoleBySlug(existing.role)
-		if (!nextRole) {
+		const removesRole = body.role === ""
+		const nextRoleSlug = body.role === undefined ? existing.role : body.role
+		const nextRole = nextRoleSlug ? await findRoleBySlug(nextRoleSlug) : null
+		if (nextRoleSlug && !nextRole) {
 			return fail("NOT_FOUND", "Role not found.", 404)
 		}
-		if (body.role && !canAssignRole(actor, nextRole)) {
+		if (body.role && nextRole && !canAssignRole(actor, nextRole)) {
 			return fail("FORBIDDEN", "You cannot assign a role at or above your own level.", 403)
+		}
+		if (body.membership && !nextRole) {
+			return fail("VALIDATION_ERROR", "Choose a role before choosing an organization.", 400)
+		}
+		if (removesRole && isSystemAdmin(target) && (await countLiveSystemAdmins()) <= 1) {
+			return fail("FORBIDDEN", "You cannot remove the last system admin's role.", 403)
 		}
 
 		const extraGrants = body.extraGrants
@@ -60,13 +68,15 @@ export async function PATCH(request: Request, context: RouteContext) {
 		const touchesMembership = Boolean(body.role || body.membership)
 		let membershipUpdate: {
 			role?: string
-			orgId?: string
+			orgId?: string | null
 			orgSlug?: string
 			memberships?: typeof target.memberships
 		} = {}
 
-		if (touchesMembership) {
-			const membership = await resolveMembership(nextRole, existing.orgSlug, body.membership)
+		if (removesRole) {
+			membershipUpdate = { role: "", orgId: null, orgSlug: "", memberships: [] }
+		} else if (touchesMembership && nextRole) {
+			const membership = await resolveMembership(nextRole, existing.orgSlug || undefined, body.membership)
 			if ("error" in membership) {
 				return fail("VALIDATION_ERROR", membership.error, 400)
 			}

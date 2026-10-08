@@ -41,6 +41,7 @@ export const PERMISSIONS = [
 	"cms:read",
 	"cms:write",
 	"orgs:all",
+	"orgs:tag",
 	"system:admin",
 	"developer:read",
 ] as const

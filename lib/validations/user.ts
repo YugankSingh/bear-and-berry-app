@@ -66,7 +66,8 @@ export const userCreateSchema = z.object({
 
 export const userPatchSchema = z.object({
 	name: z.string().trim().min(2).max(80).optional(),
-	role: z.string().trim().min(2).max(80).optional(),
+	/** Empty string removes the role: the user keeps their account but has no role permissions. */
+	role: z.union([z.literal(""), z.string().trim().min(2).max(80)]).optional(),
 	tags: z.array(z.string().trim().min(1).max(40)).optional(),
 	isActive: z.boolean().optional(),
 	password: z.string().min(8).max(128).optional(),

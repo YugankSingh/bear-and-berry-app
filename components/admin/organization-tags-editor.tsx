@@ -1,25 +1,24 @@
 "use client"
 
-import { useId, useState, type FormEvent } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { TagPicker } from "@/components/admin/tag-picker"
 
 type OrganizationTagsEditorProps = {
 	orgSlug: string
 	tags: string[]
 	canEdit: boolean
-	/** Tags already used by other organizations, offered as suggestions. */
-	suggestions?: string[]
+	/** Every tag in the catalog, offered in the picker. */
+	catalog: string[]
 }
 
 type TagResponse = { ok: boolean; error?: string; data?: { organization?: { tags: string[] } } }
 
-export function OrganizationTagsEditor({ orgSlug, tags, canEdit, suggestions = [] }: OrganizationTagsEditorProps) {
+export function OrganizationTagsEditor({ orgSlug, tags, canEdit, catalog }: OrganizationTagsEditorProps) {
 	const router = useRouter()
-	const listId = useId()
 	const [current, setCurrent] = useState(tags)
 	const [syncedTags, setSyncedTags] = useState(tags)
 	const [adding, setAdding] = useState(false)
-	const [draft, setDraft] = useState("")
 	const [busy, setBusy] = useState(false)
 	const [error, setError] = useState("")
 
@@ -41,23 +40,17 @@ export function OrganizationTagsEditor({ orgSlug, tags, canEdit, suggestions = [
 		return true
 	}
 
-	async function addTag(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault()
-		const tag = draft.trim()
-		if (!tag) {
-			return
-		}
+	async function addTag(tag: string, isNew: boolean) {
 		setBusy(true)
 		setError("")
 		const response = await fetch(`/apis/organizations/${orgSlug}/tags`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ tag }),
+			body: JSON.stringify({ tag, create: isNew }),
 		})
 		const saved = await apply(response, "Could not add tag.")
 		setBusy(false)
 		if (saved) {
-			setDraft("")
 			setAdding(false)
 		}
 	}
@@ -78,8 +71,6 @@ export function OrganizationTagsEditor({ orgSlug, tags, canEdit, suggestions = [
 		await apply(response, "Could not remove tag.")
 		setBusy(false)
 	}
-
-	const available = suggestions.filter((tag) => !current.includes(tag))
 
 	return (
 		<div className="space-y-2">
@@ -116,39 +107,16 @@ export function OrganizationTagsEditor({ orgSlug, tags, canEdit, suggestions = [
 			</div>
 
 			{canEdit && adding ? (
-				<form onSubmit={(event) => void addTag(event)} className="flex items-center gap-2">
-					<input
-						autoFocus
-						value={draft}
-						onChange={(event) => setDraft(event.target.value)}
-						list={listId}
-						placeholder="e.g. partner"
-						className="w-full min-w-[140px] max-w-[200px] rounded-2xl border border-[#ECEAE6] bg-[#F8F6F2] px-3 py-1.5 text-[12px] outline-none"
-					/>
-					<datalist id={listId}>
-						{available.map((tag) => (
-							<option key={tag} value={tag} />
-						))}
-					</datalist>
-					<button
-						type="submit"
-						disabled={busy || !draft.trim()}
-						className="rounded-full bg-[#BD0C16] px-3 py-1.5 text-[11px] font-medium text-white disabled:opacity-50"
-					>
-						{busy ? "Saving…" : "Add"}
-					</button>
-					<button
-						type="button"
-						onClick={() => {
-							setAdding(false)
-							setDraft("")
-							setError("")
-						}}
-						className="text-[11px] text-[#8C8C8C]"
-					>
-						Cancel
-					</button>
-				</form>
+				<TagPicker
+					catalog={catalog}
+					exclude={current}
+					busy={busy}
+					onSubmit={addTag}
+					onCancel={() => {
+						setAdding(false)
+						setError("")
+					}}
+				/>
 			) : null}
 
 			{error ? <p className="text-[12px] text-[#BD0C16]">{error}</p> : null}

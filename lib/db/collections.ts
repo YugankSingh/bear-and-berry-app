@@ -8,6 +8,7 @@ import type {
 	LocationDocument,
 	MachineDocument,
 	OrganizationDocument,
+	OrganizationTagDocument,
 	LeadRecipientDocument,
 	RoleDocument,
 	UserDocument,
@@ -48,6 +49,11 @@ export async function organizationsCollection(): Promise<Collection<Organization
 	return db.collection<OrganizationDocument>("organizations")
 }
 
+export async function organizationTagsCollection(): Promise<Collection<OrganizationTagDocument>> {
+	const db = await getDb()
+	return db.collection<OrganizationTagDocument>("organization_tags")
+}
+
 export async function blogPostsCollection(): Promise<Collection<BlogPostDocument>> {
 	const db = await getDb()
 	return db.collection<BlogPostDocument>("blog_posts")
@@ -75,7 +81,7 @@ export async function dropRetiredCollections(): Promise<void> {
 }
 
 export async function ensureIndexes(): Promise<void> {
-	const [users, leads, recipients, machines, locations, inventory, orgs, blogs, roles, pairingCodes] =
+	const [users, leads, recipients, machines, locations, inventory, orgs, orgTags, blogs, roles, pairingCodes] =
 		await Promise.all([
 			usersCollection(),
 			leadsCollection(),
@@ -84,6 +90,7 @@ export async function ensureIndexes(): Promise<void> {
 			locationsCollection(),
 			inventoryCollection(),
 			organizationsCollection(),
+			organizationTagsCollection(),
 			blogPostsCollection(),
 			rolesCollection(),
 			devicePairingCodesCollection(),
@@ -120,6 +127,7 @@ export async function ensureIndexes(): Promise<void> {
 		orgs.createIndex({ slug: 1 }, { unique: true }),
 		orgs.createIndex({ tags: 1 }),
 		orgs.createIndex({ name: 1 }),
+		orgTags.createIndex({ tag: 1 }, { unique: true }),
 		blogs.createIndex({ slug: 1 }, { unique: true }),
 		blogs.createIndex({ status: 1, publishedAt: -1 }),
 		pairingCodes.createIndex({ codeHash: 1 }, { unique: true }),

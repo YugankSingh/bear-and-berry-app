@@ -45,6 +45,7 @@ export const PERMISSION_META: Record<Permission, { name: string; group: string }
 	"cms:read": { name: "View blog CMS", group: "cms" },
 	"cms:write": { name: "Edit blog CMS", group: "cms" },
 	"orgs:all": { name: "All organizations", group: "access" },
+	"orgs:tag": { name: "Tag organizations", group: "access" },
 	"system:admin": { name: "System administrator", group: "access" },
 	"developer:read": { name: "View developer diagnostics", group: "developer" },
 }

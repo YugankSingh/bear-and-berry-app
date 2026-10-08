@@ -33,45 +33,19 @@ export async function findOrganizationBySlug(slug: string): Promise<Organization
 	return orgs.findOne({ slug })
 }
 
-export async function listOrganizationTags(): Promise<
-	{ tag: string; organizations: { slug: string; name: string }[] }[]
-> {
-	const organizations = await listOrganizations()
-	const byTag = new Map<string, { slug: string; name: string }[]>()
-	for (const org of organizations) {
-		for (const tag of org.tags) {
-			const list = byTag.get(tag) ?? []
-			list.push({ slug: org.slug, name: org.name })
-			byTag.set(tag, list)
-		}
-	}
-	return [...byTag.entries()]
-		.sort(([left], [right]) => left.localeCompare(right))
-		.map(([tag, orgs]) => ({ tag, organizations: orgs }))
-}
-
 export async function updateOrganization(
 	slug: string,
 	input: {
 		name?: string
 		kind?: OrgKind
-		tags?: readonly string[]
 	},
 ): Promise<OrganizationRecord | null> {
 	const orgs = await organizationsCollection()
 	const $set: Partial<OrganizationDocument> = { updatedAt: new Date() }
 	if (input.name !== undefined) $set.name = input.name
 	if (input.kind !== undefined) $set.kind = input.kind
-	if (input.tags !== undefined) $set.tags = uniqueTags(input.tags)
 	const result = await orgs.findOneAndUpdate({ slug }, { $set }, { returnDocument: "after" })
 	return result ? mapOrganization(result) : null
-}
-
-export async function setOrganizationTags(
-	slug: string,
-	tags: readonly string[],
-): Promise<OrganizationRecord | null> {
-	return updateOrganization(slug, { tags })
 }
 
 export async function addOrganizationTag(slug: string, tag: string): Promise<OrganizationRecord | null> {
@@ -103,6 +77,30 @@ export async function removeOrganizationTag(
 		{ returnDocument: "after" },
 	)
 	return result ? mapOrganization(result) : null
+}
+
+/** Returns null when the slug is already taken. */
+export async function createOrganization(input: {
+	slug: string
+	name: string
+	kind: OrgKind
+	tags?: readonly string[]
+}): Promise<OrganizationRecord | null> {
+	const orgs = await organizationsCollection()
+	if (await orgs.findOne({ slug: input.slug })) {
+		return null
+	}
+	const now = new Date()
+	const doc: Omit<OrganizationDocument, "_id"> = {
+		slug: input.slug,
+		name: input.name,
+		kind: input.kind,
+		tags: uniqueTags(input.tags ?? []),
+		createdAt: now,
+		updatedAt: now,
+	}
+	const result = await orgs.insertOne(doc as OrganizationDocument)
+	return mapOrganization({ ...doc, _id: result.insertedId })
 }
 
 export async function upsertOrganization(input: {

@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
 import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { OrganizationTagsEditor } from "@/components/admin/organization-tags-editor"
-import { hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
-import { findOrganizationBySlug, listOrganizations } from "@/lib/repositories/organizations"
+import { canTagOrganization } from "@/lib/auth/org-tagging"
+import { findOrganizationBySlug } from "@/lib/repositories/organizations"
+import { listTagCatalog } from "@/lib/repositories/organization-tags"
 
 export const metadata: Metadata = {
 	title: "Settings",
@@ -10,17 +11,15 @@ export const metadata: Metadata = {
 
 export default async function SettingsPage() {
 	const user = await getDashboardUser()
-	const canEditTags = isSystemAdmin(user) || hasPermission(user, "orgs:all")
 	let activeOrg: { slug: string; name: string; tags: string[] } | null = null
-	let tagSuggestions: string[] = []
+	let canEditTags = false
+	let tagCatalog: string[] = []
 	if (user.activeOrgSlug) {
 		try {
-			const [org, organizations] = await Promise.all([
-				findOrganizationBySlug(user.activeOrgSlug),
-				canEditTags ? listOrganizations() : Promise.resolve([]),
-			])
+			const org = await findOrganizationBySlug(user.activeOrgSlug)
 			activeOrg = org ? { slug: org.slug, name: org.name, tags: org.tags } : null
-			tagSuggestions = [...new Set(organizations.flatMap((item) => item.tags))].sort()
+			canEditTags = activeOrg ? canTagOrganization(user, activeOrg) : false
+			tagCatalog = canEditTags ? await listTagCatalog() : []
 		} catch (error) {
 			console.error(error)
 		}
@@ -83,13 +82,13 @@ export default async function SettingsPage() {
 						</p>
 						<p className="mb-5 text-[13px] text-[#8C8C8C]">
 							Tags on {activeOrg.name}. Roles bound to a tag apply to every organization that carries it.
-							{canEditTags ? "" : " Only platform admins can change them."}
+							{canEditTags ? "" : " Changing them needs the Tag organizations permission for this organization."}
 						</p>
 						<OrganizationTagsEditor
 							orgSlug={activeOrg.slug}
 							tags={activeOrg.tags}
 							canEdit={canEditTags}
-							suggestions={tagSuggestions}
+							catalog={tagCatalog}
 						/>
 					</section>
 				) : null}

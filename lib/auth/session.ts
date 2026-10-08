@@ -91,22 +91,16 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
 	try {
 		const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ["HS256"] })
 		const claims = payload as SessionClaims
-		// Pending access requests have no role, org, or grants until approved.
-		const pending = claims.accessStatus === "waitlisted"
 		if (!claims.sub || !claims.email || !claims.name) {
 			return null
 		}
-		if (!pending && (!claims.orgId || !claims.orgSlug)) {
-			return null
-		}
-		if (typeof claims.role !== "string" || (!pending && claims.role.length === 0)) {
+		// Role, org, and grants may be empty (pending requests, people approved with no
+		// permissions), but the claims must exist so tokens from older formats are re-issued.
+		if (typeof claims.role !== "string" || typeof claims.orgSlug !== "string" || !Array.isArray(claims.grants)) {
 			return null
 		}
 
-		const grantKeys = Array.isArray(claims.grants) ? claims.grants : []
-		if (grantKeys.length === 0 && !pending) {
-			return null
-		}
+		const grantKeys = claims.grants
 
 		const grants = parseGrants(grantKeys)
 		const permissions = permissionsFromGrants(grants)

@@ -31,7 +31,7 @@ export type UserWriteInput = {
 export type UserPatchInput = {
 	name?: string
 	role?: Role
-	orgId?: string
+	orgId?: string | null
 	orgSlug?: string
 	tags?: string[]
 	isActive?: boolean
@@ -205,7 +205,7 @@ export async function updateUser(id: string, input: UserPatchInput): Promise<Use
 
 	if (input.name !== undefined) $set.name = input.name
 	if (input.role !== undefined) $set.role = input.role
-	if (input.orgId !== undefined) $set.orgId = new ObjectId(input.orgId)
+	if (input.orgId !== undefined) $set.orgId = input.orgId ? new ObjectId(input.orgId) : null
 	if (input.orgSlug !== undefined) $set.orgSlug = input.orgSlug
 	if (input.tags !== undefined) $set.tags = input.tags
 	if (input.isActive !== undefined) $set.isActive = input.isActive

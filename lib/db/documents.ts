@@ -26,6 +26,14 @@ export type OrganizationDocument = {
 	updatedAt: Date
 }
 
+/** Catalog of organization tags; `OrganizationDocument.tags` must only hold tags listed here. */
+export type OrganizationTagDocument = {
+	_id: ObjectId
+	tag: string
+	createdBy: ObjectId | null
+	createdAt: Date
+}
+
 export type UserDocument = {
 	_id: ObjectId
 	name: string

@@ -7,6 +7,18 @@ import { organizationPageFromPath, organizationPath, PATH_HEADER, resolveAccessi
 import { Sidebar } from "@/components/layout/sidebar"
 import { ViewportLock } from "@/components/layout/viewport-lock"
 import { headers } from "next/headers"
+import { hasOrgWildcard } from "@/lib/auth/grants"
+import { findOrganizationBySlug } from "@/lib/repositories/organizations"
+import type { AccessibleOrg, SessionUser } from "@/types/domain"
+
+/** All-org users may open orgs created after their session was issued. */
+async function resolveOrgForWildcard(user: SessionUser, orgId: string): Promise<AccessibleOrg | null> {
+	if (!hasOrgWildcard(user.grants)) {
+		return null
+	}
+	const doc = await findOrganizationBySlug(orgId)
+	return doc ? { id: doc._id.toHexString(), slug: doc.slug, name: doc.name, tags: doc.tags } : null
+}
 
 export const dynamic = "force-dynamic"
 
@@ -25,7 +37,7 @@ export default async function OrganizationWorkspaceLayout({ children, params }: 
 	}
 
 	const { orgId } = await params
-	const org = resolveAccessibleOrg(user, orgId)
+	const org = resolveAccessibleOrg(user, orgId) ?? (await resolveOrgForWildcard(user, orgId))
 	if (!org) {
 		redirectTo("/organization")
 	}

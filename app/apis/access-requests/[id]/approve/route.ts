@@ -25,25 +25,44 @@ export async function POST(request: Request, context: RouteContext) {
 		}
 
 		const body = userPatchSchema.parse(await readJson(request))
-		if (!body.role) {
-			return fail("VALIDATION_ERROR", "Choose a role.", 400)
-		}
-		const role = await findRoleBySlug(body.role)
-		if (!role) {
-			return fail("NOT_FOUND", "Role not found.", 404)
-		}
-		if (!canAssignRole(actor, role)) {
-			return fail("FORBIDDEN", "You cannot assign a role at or above your own level.", 403)
-		}
 
-		const extraGrants = body.extraGrants
-		if (extraGrants !== undefined) {
+		const extraGrants = body.extraGrants ?? []
+		if (extraGrants.length > 0) {
 			if (!hasPermission(actor, "users:grant") && !isSystemAdmin(actor)) {
 				return fail("FORBIDDEN", "You cannot grant extra permissions.", 403)
 			}
 			if (!canGrantAccessGrants(actor, extraGrants)) {
 				return fail("FORBIDDEN", "You can only grant access you already have.", 403)
 			}
+		}
+
+		// No role: approve the account with nothing attached; permissions are added later from Team.
+		if (!body.role) {
+			const invite = await issueInvite(id, {
+				email: existing.email,
+				name: body.name ?? existing.name,
+				patch: {
+					name: body.name,
+					role: "",
+					memberships: [],
+					orgId: null,
+					orgSlug: "",
+					extraGrants,
+				},
+			})
+			return ok({
+				user: invite.user,
+				inviteSent: true,
+				inviteExpiresAt: invite.expiresAt.toISOString(),
+			})
+		}
+
+		const role = await findRoleBySlug(body.role)
+		if (!role) {
+			return fail("NOT_FOUND", "Role not found.", 404)
+		}
+		if (!canAssignRole(actor, role)) {
+			return fail("FORBIDDEN", "You cannot assign a role at or above your own level.", 403)
 		}
 
 		const membership = await resolveMembership(role, undefined, body.membership)

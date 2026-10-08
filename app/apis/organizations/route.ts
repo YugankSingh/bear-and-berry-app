@@ -1,9 +1,11 @@
 import { hasAnyPermission } from "@/lib/auth/rbac"
-import { AuthError, requireDashboardSession } from "@/lib/auth/require-auth"
+import { AuthError, requireDashboardSession, requireSystemAdmin } from "@/lib/auth/require-auth"
 import { hasUnrestrictedAccess } from "@/lib/auth/permissions"
-import { listOrganizations } from "@/lib/repositories/organizations"
-import { ok } from "@/lib/api/response"
-import { handleApiError } from "@/lib/api/guard"
+import { createOrganization, listOrganizations } from "@/lib/repositories/organizations"
+import { ensureTags } from "@/lib/repositories/organization-tags"
+import { organizationCreateSchema } from "@/lib/validations/organization"
+import { fail, ok } from "@/lib/api/response"
+import { handleApiError, readJson } from "@/lib/api/guard"
 
 export async function GET() {
 	try {
@@ -20,6 +22,21 @@ export async function GET() {
 						org.slug === user.orgSlug,
 				)
 		return ok({ organizations: visible })
+	} catch (error) {
+		return handleApiError(error)
+	}
+}
+
+export async function POST(request: Request) {
+	try {
+		const actor = await requireSystemAdmin()
+		const body = organizationCreateSchema.parse(await readJson(request))
+		const organization = await createOrganization(body)
+		if (!organization) {
+			return fail("CONFLICT", "An organization with that slug already exists.", 409)
+		}
+		await ensureTags(organization.tags, actor.id)
+		return ok({ organization }, 201)
 	} catch (error) {
 		return handleApiError(error)
 	}

@@ -85,6 +85,7 @@ export const PERMISSION_SCOPE_SPEC: Record<Permission, PermissionScopeSpec> = {
 	"cms:read": CMS,
 	"cms:write": CMS,
 	"orgs:all": PLATFORM,
+	"orgs:tag": ORG_ONLY,
 	"system:admin": PLATFORM,
 	"developer:read": PLATFORM,
 }

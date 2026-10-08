@@ -190,5 +190,8 @@ function summarizeMemberAccess(member: UserRecord): string {
 	if (member.extraGrants.length > 0) {
 		parts.push(`${member.extraGrants.length} extra`)
 	}
+	if (parts.length === 0 && !member.role) {
+		return "No access yet"
+	}
 	return parts.join(" · ") || "Platform"
 }

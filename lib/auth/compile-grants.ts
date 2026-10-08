@@ -47,6 +47,7 @@ const PERMISSION_CAPABILITY: Record<Permission, { resource: GrantResource; actio
 	"cms:read": { resource: "cms", action: "view" },
 	"cms:write": { resource: "cms", action: "edit" },
 	"orgs:all": null,
+	"orgs:tag": { resource: "orgs", action: "edit" },
 	"system:admin": { resource: "system", action: "admin" },
 	"developer:read": { resource: "developer", action: "view" },
 }
@@ -66,7 +67,8 @@ const ACTION_TO_PERMISSION: Partial<Record<GrantResource, Partial<Record<GrantAc
 	cms: { view: "cms:read", edit: "cms:write" },
 	developer: { view: "developer:read" },
 	system: { admin: SYSTEM_ADMIN_PERMISSION },
-	orgs: { view: ORGS_ALL_PERMISSION },
+	// orgs view only means orgs:all when unscoped (org:*); see permissionsFromGrants.
+	orgs: { edit: "orgs:tag" },
 }
 
 export type CompileGrantInput = {
