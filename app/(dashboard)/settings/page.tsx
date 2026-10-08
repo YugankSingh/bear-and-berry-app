@@ -1,5 +1,8 @@
 import type { Metadata } from "next"
 import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
+import { OrganizationTagsEditor } from "@/components/admin/organization-tags-editor"
+import { hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
+import { findOrganizationBySlug, listOrganizations } from "@/lib/repositories/organizations"
 
 export const metadata: Metadata = {
 	title: "Settings",
@@ -7,6 +10,21 @@ export const metadata: Metadata = {
 
 export default async function SettingsPage() {
 	const user = await getDashboardUser()
+	const canEditTags = isSystemAdmin(user) || hasPermission(user, "orgs:all")
+	let activeOrg: { slug: string; name: string; tags: string[] } | null = null
+	let tagSuggestions: string[] = []
+	if (user.activeOrgSlug) {
+		try {
+			const [org, organizations] = await Promise.all([
+				findOrganizationBySlug(user.activeOrgSlug),
+				canEditTags ? listOrganizations() : Promise.resolve([]),
+			])
+			activeOrg = org ? { slug: org.slug, name: org.name, tags: org.tags } : null
+			tagSuggestions = [...new Set(organizations.flatMap((item) => item.tags))].sort()
+		} catch (error) {
+			console.error(error)
+		}
+	}
 
 	return (
 		<PageShell
@@ -57,6 +75,24 @@ export default async function SettingsPage() {
 						))}
 					</div>
 				</section>
+
+				{activeOrg ? (
+					<section className="rounded-3xl bg-white p-6 card-shadow lg:col-span-2">
+						<p className="mb-2 text-[11px] font-semibold uppercase tracking-[3px] text-[#8C8C8C]">
+							Organization tags
+						</p>
+						<p className="mb-5 text-[13px] text-[#8C8C8C]">
+							Tags on {activeOrg.name}. Roles bound to a tag apply to every organization that carries it.
+							{canEditTags ? "" : " Only platform admins can change them."}
+						</p>
+						<OrganizationTagsEditor
+							orgSlug={activeOrg.slug}
+							tags={activeOrg.tags}
+							canEdit={canEditTags}
+							suggestions={tagSuggestions}
+						/>
+					</section>
+				) : null}
 			</div>
 		</PageShell>
 	)

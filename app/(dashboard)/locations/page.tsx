@@ -2,6 +2,8 @@ import type { Metadata } from "next"
 import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/empty-state"
+import { AddLocationForm } from "@/components/locations/add-location-form"
+import { hasPermission } from "@/lib/auth/rbac"
 import { loadVisibleFleet } from "@/lib/auth/visible-fleet"
 import { formatNumber, titleCase } from "@/lib/format"
 
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 
 export default async function LocationsPage() {
 	const user = await getDashboardUser()
+	const canEdit = hasPermission(user, "locations:write")
 	let locations = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["locations"]
 	try {
 		locations = (await loadVisibleFleet(user)).locations
@@ -24,6 +27,11 @@ export default async function LocationsPage() {
 			subtitle="Sites in your access scope — by organization or selected locations."
 			permission="locations:read"
 		>
+			{canEdit && user.activeOrgSlug ? (
+				<div className="mb-6">
+					<AddLocationForm orgSlug={user.activeOrgSlug} />
+				</div>
+			) : null}
 			{locations.length === 0 ? (
 				<EmptyState
 					title="No locations in your scope"

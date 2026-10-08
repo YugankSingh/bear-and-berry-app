@@ -18,6 +18,7 @@ export default async function AdminOrganizationsPage() {
 	} catch (error) {
 		console.error(error)
 	}
+	const allTags = [...new Set(organizations.flatMap((org) => org.tags))].sort()
 
 	return (
 		<PageShell
@@ -48,6 +49,7 @@ export default async function AdminOrganizationsPage() {
 										orgSlug={org.slug}
 										tags={org.tags}
 										canEdit={canEditTags}
+										suggestions={allTags}
 									/>
 								</td>
 								<td className="px-6 py-5 text-right">

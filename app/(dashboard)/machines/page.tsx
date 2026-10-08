@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/empty-state"
 import { MachineTagsEditor } from "@/components/machines/machine-tags-editor"
 import { MachineDevicePanel } from "@/components/machines/machine-device-panel"
+import { AddMachineForm } from "@/components/machines/add-machine-form"
 import { hasPermission } from "@/lib/auth/rbac"
 import { loadVisibleFleet } from "@/lib/auth/visible-fleet"
 import { formatNumber, titleCase } from "@/lib/format"
@@ -17,8 +18,11 @@ export default async function MachinesPage() {
 	const canEdit = hasPermission(user, "machines:write")
 	const canPair = hasPermission(user, "devices:pair")
 	let machines = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["machines"]
+	let locations = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["locations"]
 	try {
-		machines = (await loadVisibleFleet(user)).machines
+		const fleet = await loadVisibleFleet(user)
+		machines = fleet.machines
+		locations = fleet.locations
 	} catch (error) {
 		console.error(error)
 	}
@@ -29,6 +33,11 @@ export default async function MachinesPage() {
 			subtitle="BB-01 units you can see, including tags used for access."
 			permission="machines:read"
 		>
+			{canEdit && user.activeOrgSlug ? (
+				<div className="mb-6">
+					<AddMachineForm orgSlug={user.activeOrgSlug} locations={locations} />
+				</div>
+			) : null}
 			{machines.length === 0 ? (
 				<EmptyState
 					title="No machines in your scope"
