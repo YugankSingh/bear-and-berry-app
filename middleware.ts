@@ -33,7 +33,8 @@ async function readSession(request: NextRequest): Promise<SessionState> {
 
 	try {
 		const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] })
-		if (typeof payload.sub !== "string" || typeof payload.role !== "string" || payload.role.length === 0) {
+		const pending = payload.accessStatus === "waitlisted"
+		if (typeof payload.sub !== "string" || typeof payload.role !== "string" || (payload.role.length === 0 && !pending)) {
 			return { valid: false }
 		}
 		return {

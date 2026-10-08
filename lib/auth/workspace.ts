@@ -23,6 +23,7 @@ export const ADMIN_NAV = [
 	{ href: "/admin", label: "Overview", permission: "dashboard:read" as Permission },
 	{ href: "/admin/organizations", label: "Organizations", permission: "orgs:all" as Permission },
 	{ href: "/admin/team", label: "Team", permission: "users:read" as Permission },
+	{ href: "/admin/access-requests", label: "Access requests", permission: "signups:read" as Permission },
 	{ href: "/admin/roles", label: "Roles", permission: "roles:read" as Permission },
 	{ href: "/admin/leads", label: "Leads", permission: "leads:read" as Permission },
 	{ href: "/admin/cms/blog", label: "Blog CMS", permission: "cms:read" as Permission },
@@ -59,6 +60,8 @@ export function canAccessAdminWorkspace(user: {
 		hasAnyCapability(user.grants, "developer", "view") ||
 		hasAnyCapability(user.grants, "cms", "view") ||
 		hasAnyCapability(user.grants, "roles", "edit") ||
+		hasAnyCapability(user.grants, "signups", "view") ||
+		Boolean(user.permissions?.includes("signups:read")) ||
 		Boolean(user.permissions?.includes("system:admin")) ||
 		Boolean(user.permissions?.includes("orgs:all")) ||
 		Boolean(user.permissions?.includes("developer:read")) ||

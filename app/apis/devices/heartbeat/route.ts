@@ -5,13 +5,15 @@ import {
 	reportMachineInstallState,
 	touchMachineHeartbeat,
 } from "@/lib/repositories/device-provisioning"
+import { updateMachine } from "@/lib/repositories/machines"
+import { sshHostSchema } from "@/lib/validations/machine"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
 const heartbeatSchema = z.object({
 	installState: z.enum(MACHINE_INSTALL_STATES).optional(),
 	message: z.string().trim().max(500).nullable().optional(),
-	sshHost: z.string().trim().min(1).max(255).optional(),
+	sshHost: sshHostSchema.optional(),
 })
 
 export async function POST(request: Request) {
@@ -40,7 +42,6 @@ export async function POST(request: Request) {
 		}
 
 		if (body.sshHost) {
-			const { updateMachine } = await import("@/lib/repositories/machines")
 			const updated = await updateMachine(machine.id, { sshHost: body.sshHost })
 			return ok({
 				machine: {

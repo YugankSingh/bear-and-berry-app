@@ -31,6 +31,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 			if (!canSeeLocation(user, location)) {
 				return fail("FORBIDDEN", "You do not have access to that location.", 403)
 			}
+			if (location.orgSlug !== existing.orgSlug) {
+				return fail("VALIDATION_ERROR", "That location belongs to a different organization.", 400)
+			}
 		}
 
 		const machine = await updateMachine(id, body)

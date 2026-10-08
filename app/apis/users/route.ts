@@ -74,7 +74,10 @@ export async function POST(request: Request) {
 			if (status === "invited") {
 				return fail("CONFLICT", "A user with that email already exists.", 409)
 			}
-			if (!canManageUser(actor, existingRecord)) {
+			if (status === "waitlisted" && !hasPermission(actor, "signups:approve")) {
+				return fail("FORBIDDEN", "That email has a pending access request.", 403)
+			}
+			if (status !== "waitlisted" && !canManageUser(actor, existingRecord)) {
 				return fail("FORBIDDEN", "You cannot manage that account.", 403)
 			}
 

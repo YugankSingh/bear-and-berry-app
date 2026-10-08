@@ -62,7 +62,7 @@ export function ApproveAccessButton({
 
 		setLoading(true)
 		setError("")
-		const response = await fetch(`/apis/users/${userId}/invite`, {
+		const response = await fetch(`/apis/access-requests/${userId}/approve`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
@@ -89,7 +89,7 @@ export function ApproveAccessButton({
 				onClick={() => setOpen(true)}
 				className="rounded-full bg-[#BD0C16] px-4 py-2 text-[12px] font-medium text-white hover:bg-[#a00a12]"
 			>
-				Invite
+				Approve
 			</button>
 		)
 	}
@@ -137,7 +137,7 @@ export function ApproveAccessButton({
 					onClick={() => void approve()}
 					className="rounded-full bg-[#BD0C16] px-4 py-2 text-[12px] font-medium text-white hover:bg-[#a00a12] disabled:opacity-50"
 				>
-					{loading ? "Sending…" : "Send invitation"}
+					{loading ? "Approving…" : "Approve and send invitation"}
 				</button>
 				<button
 					type="button"

@@ -6,7 +6,7 @@ import { joinScopePath } from "@/lib/auth/scope"
 import { orgSlugFromPath } from "@/lib/auth/fleet-access"
 import type { MachineDocument } from "@/lib/db/documents"
 import { findLocationsByIds } from "@/lib/repositories/locations"
-import type { MachineCreateInput, MachinePatchInput } from "@/lib/validations/machine"
+import type { MachineCreateInput, MachineUpdateInput } from "@/lib/validations/machine"
 import type { MachineRecord, MachineStatus } from "@/types/domain"
 
 function toObjectId(id: string | null | undefined): ObjectId | null {
@@ -114,7 +114,7 @@ export async function createMachine(
 
 export async function updateMachine(
 	id: string,
-	input: MachinePatchInput,
+	input: MachineUpdateInput,
 ): Promise<MachineRecord | null> {
 	if (!ObjectId.isValid(id)) {
 		return null

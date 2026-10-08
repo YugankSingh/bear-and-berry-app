@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function OverviewPage() {
 	const user = await getDashboardUser()
-	let machineCounts: Record<MachineStatus, number> = { online: 0, offline: 0, maintenance: 0, error: 0 }
+	const machineCounts: Record<MachineStatus, number> = { online: 0, offline: 0, maintenance: 0, error: 0 }
 	let cupsToday = 0
 	let lowInventory = 0
 	let machines = [] as MachineRecord[]

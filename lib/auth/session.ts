@@ -91,15 +91,20 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
 	try {
 		const { payload } = await jwtVerify(token, getSecretKey(), { algorithms: ["HS256"] })
 		const claims = payload as SessionClaims
-		if (!claims.sub || !claims.email || !claims.name || !claims.orgId || !claims.orgSlug) {
+		// Pending access requests have no role, org, or grants until approved.
+		const pending = claims.accessStatus === "waitlisted"
+		if (!claims.sub || !claims.email || !claims.name) {
 			return null
 		}
-		if (typeof claims.role !== "string" || claims.role.length === 0) {
+		if (!pending && (!claims.orgId || !claims.orgSlug)) {
+			return null
+		}
+		if (typeof claims.role !== "string" || (!pending && claims.role.length === 0)) {
 			return null
 		}
 
 		const grantKeys = Array.isArray(claims.grants) ? claims.grants : []
-		if (grantKeys.length === 0) {
+		if (grantKeys.length === 0 && !pending) {
 			return null
 		}
 
@@ -112,10 +117,10 @@ export async function readSessionToken(token: string): Promise<SessionUser | nul
 			email: claims.email,
 			name: claims.name,
 			role: claims.role,
-			roleName: claims.roleName || titleCase(claims.role),
+			roleName: claims.roleName || (claims.role ? titleCase(claims.role) : "No role"),
 			roleRank: typeof claims.roleRank === "number" ? claims.roleRank : 0,
-			orgId: claims.orgId,
-			orgSlug: claims.orgSlug,
+			orgId: claims.orgId ?? "",
+			orgSlug: claims.orgSlug ?? "",
 			tags: Array.isArray(claims.tags) ? claims.tags : [],
 			accessStatus: resolveAccessStatus(claims.accessStatus),
 			memberships: [],
@@ -229,9 +234,9 @@ export async function hydrateAuthUser(user: UserDocument): Promise<{
 		name: user.name,
 		email: user.email,
 		role: user.role,
-		roleName: role?.name ?? titleCase(user.role),
+		roleName: role?.name ?? (user.role ? titleCase(user.role) : "No role"),
 		roleRank: role?.rank ?? 0,
-		orgId: user.orgId.toHexString(),
+		orgId: user.orgId?.toHexString() ?? "",
 		orgSlug: user.orgSlug,
 		tags: user.tags,
 		accessStatus: resolveAccessStatus(user.accessStatus),

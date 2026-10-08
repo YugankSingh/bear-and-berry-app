@@ -2,6 +2,7 @@ import { dropRetiredCollections, ensureIndexes } from "@/lib/db/collections"
 import { backfillFleetDenorm } from "@/lib/db/backfill-fleet"
 import { ensureDefaultRoles } from "@/lib/repositories/roles"
 import { seedLeadRecipientsIfEmpty } from "@/lib/repositories/lead-recipients"
+import { stripPendingAccessRequestGrants } from "@/lib/repositories/users"
 import { upsertOrganization } from "@/lib/repositories/organizations"
 import { BEAR_AND_BERRY_SLUG, VENDFORGE_LABS_SLUG } from "@/lib/auth/scope"
 
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
 	await ensureIndexes()
 	await backfillFleetDenorm()
 	await ensureDefaultRoles()
+	await stripPendingAccessRequestGrants()
 	await seedLeadRecipientsIfEmpty()
 	await upsertOrganization({
 		slug: BEAR_AND_BERRY_SLUG,

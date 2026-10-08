@@ -29,6 +29,10 @@ export function handleApiError(error: unknown, request?: Request) {
 		return fail("INVALID_PAYLOAD", "We could not read your request. Please try again.", 400, headers)
 	}
 
+	if (typeof error === "object" && error !== null && (error as { code?: unknown }).code === 11000) {
+		return fail("CONFLICT", "That value is already in use.", 409, headers)
+	}
+
 	console.error("api error", error)
 	return fail("SERVER_ERROR", "There was an unexpected issue. Please try again.", 500, headers)
 }

@@ -8,7 +8,6 @@ import {
 	fillRequiredWildcards,
 } from "@/lib/auth/grants"
 import { compileGrants } from "@/lib/auth/compile-grants"
-import type { Permission } from "@/types/domain"
 
 describe("grant parsing and matching", () => {
 	it("fills required wildcards for org-bound resources", () => {

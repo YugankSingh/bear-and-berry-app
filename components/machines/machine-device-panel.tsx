@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { buildSshCommand } from "@/lib/devices/ssh-host"
 
 type PairingPayload = {
 	code: string
@@ -50,18 +51,27 @@ export function MachineDevicePanel({
 	const [pairing, setPairing] = useState<PairingPayload | null>(null)
 	const [creds, setCreds] = useState<OpsCreds | null>(null)
 	const [hostDraft, setHostDraft] = useState(sshHost ?? "")
+	const [syncedHost, setSyncedHost] = useState(sshHost)
 	const [now, setNow] = useState(() => Date.now())
 	const [copied, setCopied] = useState(false)
 
-	useEffect(() => {
+	if (sshHost !== syncedHost) {
+		setSyncedHost(sshHost)
 		setHostDraft(sshHost ?? "")
-	}, [sshHost])
+	}
 
 	useEffect(() => {
 		if (!pairing) {
 			return
 		}
-		const timer = window.setInterval(() => setNow(Date.now()), 1000)
+		const expiresAt = new Date(pairing.expiresAt).getTime()
+		const timer = window.setInterval(() => {
+			const current = Date.now()
+			setNow(current)
+			if (current >= expiresAt) {
+				setPairing(null)
+			}
+		}, 1000)
 		return () => window.clearInterval(timer)
 	}, [pairing])
 
@@ -71,12 +81,6 @@ export function MachineDevicePanel({
 		}
 		return new Date(pairing.expiresAt).getTime() - now
 	}, [pairing, now])
-
-	useEffect(() => {
-		if (pairing && remainingMs <= 0) {
-			setPairing(null)
-		}
-	}, [pairing, remainingMs])
 
 	async function generateCode() {
 		setLoading(true)
@@ -147,9 +151,7 @@ export function MachineDevicePanel({
 		)
 	}
 
-	const sshCommand =
-		creds?.sshCommand ??
-		(opsUsername && sshHost ? `ssh ${opsUsername}@${sshHost}` : opsUsername ? `ssh ${opsUsername}@<ssh-host>` : null)
+	const sshCommand = creds?.sshCommand ?? (opsUsername ? buildSshCommand(opsUsername, sshHost) : null)
 
 	return (
 		<div className="min-w-[200px] space-y-2 text-left">

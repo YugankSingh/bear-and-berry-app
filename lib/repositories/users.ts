@@ -15,7 +15,7 @@ export type UserWriteInput = {
 	email: string
 	password?: string
 	role: Role
-	orgId: string
+	orgId: string | null
 	orgSlug: string
 	tags?: string[]
 	accessStatus?: AccessStatus
@@ -93,20 +93,43 @@ export type UserListOptions = {
 	orgSlug?: string
 }
 
+/** Team members only — pending access requests are listed separately. */
 export async function listUsers(options: UserListOptions = {}): Promise<UserRecord[]> {
 	const users = await usersCollection()
+	const base = { ...LIVE_USER_FILTER, accessStatus: { $ne: "waitlisted" as const } }
 	const filter = options.orgSlug
 		? {
-				...LIVE_USER_FILTER,
+				...base,
 				$or: [
 					{ orgSlug: options.orgSlug },
 					{ "memberships.org": options.orgSlug },
 					{ "memberships.org": "*" },
 				],
 			}
-		: LIVE_USER_FILTER
+		: base
 	const docs = await users.find(filter).sort({ createdAt: -1 }).toArray()
 	return toUserRecords(docs)
+}
+
+export async function listAccessRequests(): Promise<UserRecord[]> {
+	const users = await usersCollection()
+	const docs = await users
+		.find({ ...LIVE_USER_FILTER, accessStatus: "waitlisted" })
+		.sort({ createdAt: -1 })
+		.toArray()
+	return toUserRecords(docs)
+}
+
+/** Pending access requests carry no role, org, membership, or grants until approved. */
+export async function stripPendingAccessRequestGrants(): Promise<void> {
+	const users = await usersCollection()
+	await users.updateMany(
+		{ accessStatus: "waitlisted" },
+		{
+			$set: { role: "", orgId: null, orgSlug: "", memberships: [], extraGrants: [] },
+			$pull: { tags: "waitlist" },
+		},
+	)
 }
 
 export async function countLiveSystemAdmins(): Promise<number> {
@@ -149,7 +172,7 @@ export async function createUser(input: UserWriteInput): Promise<UserRecord> {
 		email: input.email.toLowerCase(),
 		passwordHash: await hashPassword(input.password ?? randomBytes(32).toString("hex")),
 		role: input.role,
-		orgId: new ObjectId(input.orgId),
+		orgId: input.orgId ? new ObjectId(input.orgId) : null,
 		orgSlug: input.orgSlug,
 		tags: input.tags ?? [],
 		isActive: true,

@@ -6,7 +6,7 @@ import {
 	roleHasPermission,
 	sanitizeRolePermissions,
 } from "@/lib/auth/permissions"
-import { ORGS_ALL_PERMISSION, SYSTEM_ADMIN_PERMISSION, type RoleRecord } from "@/types/domain"
+import { SYSTEM_ADMIN_PERMISSION, type RoleRecord } from "@/types/domain"
 import type { RoleDocument } from "@/lib/db/documents"
 
 export function mapRole(doc: RoleDocument): RoleRecord {
@@ -33,17 +33,6 @@ export async function findRoleBySlug(slug: string): Promise<RoleRecord | null> {
 	const roles = await rolesCollection()
 	const doc = await roles.findOne({ slug })
 	return doc ? mapRole(doc) : null
-}
-
-export async function findSignupRole(): Promise<RoleRecord | null> {
-	const roles = await listRoles()
-	return (
-		roles.find((role) => role.slug === "viewer") ??
-		roles
-			.filter((role) => !roleHasPermission(role, ORGS_ALL_PERMISSION))
-			.sort((left, right) => left.rank - right.rank)[0] ??
-		null
-	)
 }
 
 export async function findSystemAdminRole(): Promise<RoleRecord | null> {

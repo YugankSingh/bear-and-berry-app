@@ -15,6 +15,9 @@ const PLATFORM_ONLY_PERMISSIONS = new Set<Permission>([
 	"roles:write",
 	"devices:pair",
 	"developer:read",
+	"signups:read",
+	"signups:approve",
+	"signups:reject",
 ])
 
 const ADMIN_PERMISSIONS = ALL_PERMISSIONS.filter(

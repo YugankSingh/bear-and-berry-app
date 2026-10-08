@@ -3,12 +3,9 @@ import { bootstrapFirstAdmin } from "@/lib/auth/bootstrap"
 import { isUserRemoved } from "@/lib/auth/access"
 import { nextAuthStep } from "@/lib/auth/lookup"
 import { createEmailOtp } from "@/lib/auth/tokens"
-import { BEAR_AND_BERRY_SLUG } from "@/lib/auth/scope"
 import { establishSession } from "@/lib/auth/session"
 import { sendSignupOtpEmail } from "@/lib/mail/auth-mail"
 import { countUsers, createUser, findUserByEmail, updateUser } from "@/lib/repositories/users"
-import { findSignupRole } from "@/lib/repositories/roles"
-import { findOrganizationBySlug } from "@/lib/repositories/organizations"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
@@ -50,25 +47,16 @@ export async function POST(request: Request) {
 			}
 		}
 
-		const org = await findOrganizationBySlug(BEAR_AND_BERRY_SLUG)
-		if (!org) {
-			return fail("SERVER_ERROR", "Bear & Berry organization is missing.", 500)
-		}
-
-		const signupRole = await findSignupRole()
-		if (!signupRole) {
-			return fail("SERVER_ERROR", "No signup role is configured.", 500)
-		}
-
 		const created = await createUser({
 			name: body.name,
 			email: body.email,
 			password: body.password,
-			role: signupRole.slug,
-			orgId: org._id.toHexString(),
-			orgSlug: org.slug,
-			memberships: [{ org: org.slug, orgTag: null, role: signupRole.slug }],
-			tags: ["waitlist"],
+			role: "",
+			orgId: null,
+			orgSlug: "",
+			memberships: [],
+			extraGrants: [],
+			tags: [],
 			accessStatus: "waitlisted",
 			emailVerified: false,
 			passwordReady: true,

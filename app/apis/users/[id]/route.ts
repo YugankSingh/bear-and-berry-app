@@ -3,7 +3,7 @@ import { countLiveSystemAdmins, findUserById, softDeleteUser, toUserRecord, upda
 import { findRoleBySlug } from "@/lib/repositories/roles"
 import { listOrganizations } from "@/lib/repositories/organizations"
 import { AuthError, requireDashboardSession, requirePermission } from "@/lib/auth/require-auth"
-import { isUserRemoved } from "@/lib/auth/access"
+import { isUserRemoved, resolveAccessStatus } from "@/lib/auth/access"
 import { canGrantAccessGrants, hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
 import { authorizeUserPatch } from "@/lib/auth/user-patch-auth"
 import { resolveMembership } from "@/lib/auth/membership"
@@ -14,6 +14,8 @@ import { handleApiError, readJson } from "@/lib/api/guard"
 type RouteContext = {
 	params: Promise<{ id: string }>
 }
+
+const PENDING_REQUEST_ERROR = "This is a pending access request. Use Access requests to approve or reject it."
 
 export async function PATCH(request: Request, context: RouteContext) {
 	try {
@@ -27,6 +29,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 		const existing = await findUserById(id)
 		if (!existing || isUserRemoved(existing)) {
 			return fail("NOT_FOUND", "User not found.", 404)
+		}
+		if (resolveAccessStatus(existing.accessStatus) === "waitlisted") {
+			return fail("FORBIDDEN", PENDING_REQUEST_ERROR, 403)
 		}
 
 		const target = await toUserRecord(existing)
@@ -108,6 +113,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
 		const existing = await findUserById(id)
 		if (!existing || isUserRemoved(existing)) {
 			return fail("NOT_FOUND", "User not found.", 404)
+		}
+		if (resolveAccessStatus(existing.accessStatus) === "waitlisted") {
+			return fail("FORBIDDEN", PENDING_REQUEST_ERROR, 403)
 		}
 
 		const target = await toUserRecord(existing)

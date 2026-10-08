@@ -1,5 +1,5 @@
 import { userPatchSchema } from "@/lib/validations/user"
-import { findUserById, toUserRecord } from "@/lib/repositories/users"
+import { findUserById } from "@/lib/repositories/users"
 import { findRoleBySlug } from "@/lib/repositories/roles"
 import { listOrganizations } from "@/lib/repositories/organizations"
 import { requirePermission } from "@/lib/auth/require-auth"
@@ -7,7 +7,7 @@ import { isUserRemoved, resolveAccessStatus } from "@/lib/auth/access"
 import { canGrantAccessGrants, hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
 import { issueInvite } from "@/lib/auth/invite"
 import { resolveMembership } from "@/lib/auth/membership"
-import { canAssignRole, canGrantMemberships, canManageUser } from "@/lib/auth/team-access"
+import { canAssignRole, canGrantMemberships } from "@/lib/auth/team-access"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
 
@@ -17,28 +17,22 @@ type RouteContext = {
 
 export async function POST(request: Request, context: RouteContext) {
 	try {
-		const actor = await requirePermission("users:write")
+		const actor = await requirePermission("signups:approve")
 		const { id } = await context.params
 		const existing = await findUserById(id)
-		if (!existing || isUserRemoved(existing)) {
-			return fail("NOT_FOUND", "User not found.", 404)
-		}
-		if (resolveAccessStatus(existing.accessStatus) === "waitlisted") {
-			return fail("FORBIDDEN", "This is a pending access request. Approve it from Access requests.", 403)
+		if (!existing || isUserRemoved(existing) || resolveAccessStatus(existing.accessStatus) !== "waitlisted") {
+			return fail("NOT_FOUND", "Access request not found.", 404)
 		}
 
-		const target = await toUserRecord(existing)
-		if (!canManageUser(actor, target)) {
-			return fail("FORBIDDEN", "You cannot manage a user at or above your own level.", 403)
+		const body = userPatchSchema.parse(await readJson(request))
+		if (!body.role) {
+			return fail("VALIDATION_ERROR", "Choose a role.", 400)
 		}
-
-		const raw = await readJson(request).catch(() => ({}))
-		const body = userPatchSchema.parse(raw && typeof raw === "object" ? raw : {})
-		const nextRole = body.role ? await findRoleBySlug(body.role) : await findRoleBySlug(existing.role)
-		if (!nextRole) {
+		const role = await findRoleBySlug(body.role)
+		if (!role) {
 			return fail("NOT_FOUND", "Role not found.", 404)
 		}
-		if (body.role && !canAssignRole(actor, nextRole)) {
+		if (!canAssignRole(actor, role)) {
 			return fail("FORBIDDEN", "You cannot assign a role at or above your own level.", 403)
 		}
 
@@ -52,11 +46,10 @@ export async function POST(request: Request, context: RouteContext) {
 			}
 		}
 
-		const membership = await resolveMembership(nextRole, existing.orgSlug, body.membership)
+		const membership = await resolveMembership(role, undefined, body.membership)
 		if ("error" in membership) {
 			return fail("VALIDATION_ERROR", membership.error, 400)
 		}
-
 		const orgCatalog = await listOrganizations()
 		if (!canGrantMemberships(actor, membership.memberships, orgCatalog)) {
 			return fail("FORBIDDEN", "You cannot assign users outside your organizations.", 403)
@@ -67,7 +60,7 @@ export async function POST(request: Request, context: RouteContext) {
 			name: body.name ?? existing.name,
 			patch: {
 				name: body.name,
-				role: nextRole.slug,
+				role: role.slug,
 				memberships: membership.memberships,
 				orgId: membership.org._id.toHexString(),
 				orgSlug: membership.org.slug,

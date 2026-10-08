@@ -2,6 +2,7 @@ import { requirePermission } from "@/lib/auth/require-auth"
 import { canSeeMachine } from "@/lib/auth/fleet-access"
 import { findMachineById } from "@/lib/repositories/machines"
 import { revealOpsPassword } from "@/lib/repositories/device-provisioning"
+import { buildSshCommand } from "@/lib/devices/ssh-host"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError } from "@/lib/api/guard"
 
@@ -29,8 +30,7 @@ export async function POST(_request: Request, context: RouteContext) {
 			return fail("NOT_FOUND", "Ops password is unavailable.", 404)
 		}
 
-		const host = machine.sshHost || "<ssh-host>"
-		const sshCommand = `ssh ${machine.opsUsername}@${host}`
+		const sshCommand = buildSshCommand(machine.opsUsername, machine.sshHost)
 
 		return ok({
 			opsUsername: machine.opsUsername,

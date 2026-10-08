@@ -29,12 +29,12 @@ export async function listLocations(options: LocationListOptions = {}): Promise<
 
 export async function createLocation(
 	input: LocationCreateInput,
-	orgId: string,
+	org: { id: string; slug: string },
 ): Promise<LocationRecord> {
 	const locations = await locationsCollection()
 	const now = new Date()
 	const path = joinScopePath([
-		input.orgSlug,
+		org.slug,
 		input.region,
 		input.city,
 		input.name,
@@ -46,8 +46,8 @@ export async function createLocation(
 		address: input.address ?? null,
 		siteType: input.siteType,
 		footfallDaily: input.footfallDaily ?? null,
-		orgId: new ObjectId(orgId),
-		orgSlug: input.orgSlug,
+		orgId: new ObjectId(org.id),
+		orgSlug: org.slug,
 		path,
 		tags: input.tags ?? [],
 		createdAt: now,

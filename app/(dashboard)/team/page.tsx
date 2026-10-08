@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
 import { InviteUserForm } from "@/components/team/invite-user-form"
-import { ApproveAccessButton } from "@/components/team/approve-access-button"
 import { RemoveUserButton } from "@/components/team/remove-user-button"
 import { ResendInviteButton } from "@/components/team/resend-invite-button"
 import { UserPermissionsButton } from "@/components/team/user-permissions-button"
@@ -121,7 +120,7 @@ export default async function TeamPage() {
 								<td className="px-6 py-5">
 									<Badge
 										tone={
-											member.inviteState === "expired" || member.accessStatus === "waitlisted"
+											member.inviteState === "expired"
 												? "warn"
 												: member.accessStatus === "invited" && member.inviteState !== "pending"
 													? "success"
@@ -132,11 +131,9 @@ export default async function TeamPage() {
 											? "Invite sent"
 											: member.inviteState === "expired"
 												? "Invite expired"
-												: member.accessStatus === "waitlisted"
-													? "Waitlisted"
-													: member.accessStatus === "pending_invite"
-														? "Invite sent"
-														: "Invited"}
+												: member.accessStatus === "pending_invite"
+													? "Invite sent"
+													: "Invited"}
 									</Badge>
 								</td>
 								<td className="px-6 py-5 text-[13px] text-[#555555]">
@@ -145,19 +142,6 @@ export default async function TeamPage() {
 								<td className="px-6 py-5 text-[13px] text-[#8C8C8C]">{formatDate(member.createdAt)}</td>
 								<td className="px-6 py-5">
 									<div className="flex flex-wrap items-center justify-end gap-2">
-										{canInvite && member.accessStatus === "waitlisted" && canManageUser(user, member) ? (
-											<ApproveAccessButton
-												userId={member.id}
-												assignableRoles={roles}
-												organizations={organizations}
-												locations={locations}
-												machines={machines}
-												catalog={catalog}
-												grantable={grantable}
-												canGrantExtras={canGrant}
-												allowOrgWildcard={allowOrgWildcard}
-											/>
-										) : null}
 										{canInvite &&
 										(member.inviteState === "pending" || member.inviteState === "expired") &&
 										canManageUser(user, member) ? (

@@ -35,7 +35,7 @@ export default async function WaitlistPage() {
 				</div>
 				<p className="text-[14px] leading-[1.75] text-[#8C8C8C]">
 					The Bear & Berry operator dashboard is limited to invited partners and internal
-					operators. You can sign back in anytime — if you still have not been invited, you'll
+					operators. You can sign back in anytime — if you still have not been invited, you&apos;ll
 					return here.
 				</p>
 				<SignOutButton />

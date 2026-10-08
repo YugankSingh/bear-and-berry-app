@@ -3,10 +3,11 @@ import { canSeeMachine } from "@/lib/auth/fleet-access"
 import { findMachineById, updateMachine } from "@/lib/repositories/machines"
 import { fail, ok } from "@/lib/api/response"
 import { handleApiError, readJson } from "@/lib/api/guard"
+import { sshHostSchema } from "@/lib/validations/machine"
 import { z } from "zod"
 
-const sshHostSchema = z.object({
-	sshHost: z.string().trim().min(1).max(255).nullable(),
+const sshHostBodySchema = z.object({
+	sshHost: sshHostSchema.nullable(),
 })
 
 type RouteContext = {
@@ -26,7 +27,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 			return fail("FORBIDDEN", "You do not have access to that machine.", 403)
 		}
 
-		const body = sshHostSchema.parse(await readJson(request))
+		const body = sshHostBodySchema.parse(await readJson(request))
 		const updated = await updateMachine(id, { sshHost: body.sshHost })
 		if (!updated) {
 			return fail("NOT_FOUND", "Machine not found.", 404)

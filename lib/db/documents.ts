@@ -31,8 +31,9 @@ export type UserDocument = {
 	name: string
 	email: string
 	passwordHash: string
+	/** Empty for pending access requests — no role until approved. */
 	role: Role
-	orgId: ObjectId
+	orgId: ObjectId | null
 	orgSlug: string
 	tags: string[]
 	isActive: boolean
