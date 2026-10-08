@@ -13,6 +13,7 @@ const PLATFORM_ONLY_PERMISSIONS = new Set<Permission>([
 	"system:admin",
 	"orgs:all",
 	"roles:write",
+	"devices:pair",
 	"developer:read",
 ])
 

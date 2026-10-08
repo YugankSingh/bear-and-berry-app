@@ -59,6 +59,7 @@ export const PERMISSION_SCOPE_SPEC: Record<Permission, PermissionScopeSpec> = {
 	"leads:notify": PLATFORM,
 	"machines:read": ORG_LOCATION_TAG_ID,
 	"machines:write": ORG_LOCATION_TAG_ID,
+	"devices:pair": PLATFORM,
 	"locations:read": ORG_TAG_ID,
 	"locations:write": ORG_TAG_ID,
 	"inventory:read": ORG_LOCATION_TAG_ID,

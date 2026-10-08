@@ -13,6 +13,7 @@ export const SUPER_ADMIN_ONLY_PERMISSIONS: readonly Permission[] = [
 	SYSTEM_ADMIN_PERMISSION,
 	ORGS_ALL_PERMISSION,
 	"roles:write",
+	"devices:pair",
 ]
 
 export const PERMISSION_META: Record<Permission, { name: string; group: string }> = {
@@ -23,6 +24,7 @@ export const PERMISSION_META: Record<Permission, { name: string; group: string }
 	"leads:notify": { name: "Edit lead notification emails", group: "leads" },
 	"machines:read": { name: "View machines", group: "fleet" },
 	"machines:write": { name: "Edit machines", group: "fleet" },
+	"devices:pair": { name: "Generate machine pairing codes", group: "devices" },
 	"locations:read": { name: "View locations", group: "fleet" },
 	"locations:write": { name: "Edit locations", group: "fleet" },
 	"inventory:read": { name: "View inventory", group: "fleet" },
@@ -47,6 +49,7 @@ export const PERMISSION_GROUP_LABELS: Record<string, string> = {
 	dashboard: "Dashboard",
 	leads: "Leads",
 	fleet: "Fleet",
+	devices: "Devices",
 	revenue: "Revenue",
 	team: "Team",
 	access: "Access",

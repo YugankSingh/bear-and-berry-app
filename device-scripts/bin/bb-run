@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Fetch an allowlisted stage script with the device API key and run it.
+set -euo pipefail
+
+bb_die() { printf '[bb-run] ERROR: %s\n' "$*" >&2; exit 1; }
+[[ "${EUID}" -eq 0 ]] || bb_die "run as root"
+[[ $# -ge 1 ]] || bb_die "usage: bb-run <script-name>"
+
+NAME="$1"
+STATE_DIR=/var/lib/bear-and-berry
+[[ -f "${STATE_DIR}/machine.env" ]] || bb_die "missing ${STATE_DIR}/machine.env — run bootstrap first"
+[[ -f "${STATE_DIR}/device.key" ]] || bb_die "missing device.key"
+# shellcheck source=/dev/null
+source "${STATE_DIR}/machine.env"
+: "${BB_APP:?}"
+KEY="$(tr -d '[:space:]' < "${STATE_DIR}/device.key")"
+APP="${BB_APP%/}"
+
+WORKDIR="$(mktemp -d /tmp/bb-run.XXXXXX)"
+trap 'rm -rf "${WORKDIR}"' EXIT
+
+# Resolve alias or path via scripts endpoint (server maps aliases).
+curl -fsS "${APP}/apis/devices/scripts/${NAME}" \
+	-H "Authorization: Bearer ${KEY}" \
+	-o "${WORKDIR}/script.sh"
+chmod 0755 "${WORKDIR}/script.sh"
+
+# Ensure common.sh available beside script when stages expect ../lib/common.sh
+mkdir -p "${WORKDIR}/lib" "${WORKDIR}/stages"
+curl -fsS "${APP}/apis/devices/scripts/lib/common.sh" \
+	-H "Authorization: Bearer ${KEY}" \
+	-o "${WORKDIR}/lib/common.sh"
+chmod 0644 "${WORKDIR}/lib/common.sh"
+cp "${WORKDIR}/script.sh" "${WORKDIR}/stages/script.sh"
+
+export BB_APP BB_MACHINE_ID
+# Prefer ops username from passwd if present
+if [[ -z "${BB_OPS_USERNAME:-}" ]]; then
+	BB_OPS_USERNAME="$(awk -F: '$3>=1000 && $1 ~ /^bb-/ {print $1; exit}' /etc/passwd || true)"
+	export BB_OPS_USERNAME
+fi
+
+bash "${WORKDIR}/stages/script.sh"

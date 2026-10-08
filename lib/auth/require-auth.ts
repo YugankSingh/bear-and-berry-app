@@ -69,3 +69,11 @@ export async function requireVendforgeCms(permission: "cms:read" | "cms:write"):
 	}
 	return user
 }
+
+export async function requireSystemAdmin(): Promise<SessionUser> {
+	const user = await requireDashboardSession()
+	if (!isSystemAdmin(user)) {
+		throw new AuthError("System administrator access is required.", 403)
+	}
+	return user
+}

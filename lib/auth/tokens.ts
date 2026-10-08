@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomInt } from "crypto"
-import { getAuthSecret, getInviteTtlDays } from "@/lib/env"
+import { getAuthSecret, getDevicePairingTtlMs, getInviteTtlDays } from "@/lib/env"
 
 const OTP_TTL_MS = 15 * 60 * 1000
 
@@ -24,6 +24,31 @@ export function createEmailOtp(): { otp: string; otpHash: string; expiresAt: Dat
 		otpHash: hashSecret(otp),
 		expiresAt: new Date(Date.now() + OTP_TTL_MS),
 	}
+}
+
+/** 8-digit machine pairing code; acts as device auth until expiresAt. */
+export function createDevicePairingCode(): { code: string; codeHash: string; expiresAt: Date } {
+	const code = String(randomInt(0, 100_000_000)).padStart(8, "0")
+	return {
+		code,
+		codeHash: hashSecret(code),
+		expiresAt: new Date(Date.now() + getDevicePairingTtlMs()),
+	}
+}
+
+/** Long-lived machine→cloud API key (stored hashed; plaintext returned once). */
+export function createDeviceApiKey(): { key: string; keyHash: string } {
+	const key = randomBytes(32).toString("base64url")
+	return {
+		key,
+		keyHash: hashSecret(key),
+	}
+}
+
+export function createOpsCredentials(): { username: string; password: string } {
+	const username = `bb-${randomBytes(3).toString("hex")}`
+	const password = randomBytes(18).toString("base64url")
+	return { username, password }
 }
 
 export function verifyHashedSecret(value: string, expectedHash: string | null | undefined): boolean {

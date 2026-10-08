@@ -18,6 +18,11 @@ export const PUBLIC_PATHS = [
 	"/apis/auth/invite",
 	"/apis/auth/logout",
 	"/apis/public",
+	"/apis/devices/pair",
+	"/apis/devices/scripts",
+	"/apis/devices/heartbeat",
+	"/apis/devices/rotate-key",
+	"/apis/devices/updates",
 ] as const
 
 export const WAITLIST_API_PATHS = ["/apis/auth/logout", "/apis/auth/me"] as const

@@ -2,6 +2,7 @@ import type { Collection } from "mongodb"
 import { getDb } from "@/lib/mongodb"
 import type {
 	BlogPostDocument,
+	DevicePairingCodeDocument,
 	InventorySlotDocument,
 	LeadDocument,
 	LocationDocument,
@@ -63,19 +64,26 @@ export async function permissionsCollection(): Promise<Collection<PermissionDocu
 	return db.collection<PermissionDocument>("permissions")
 }
 
+export async function devicePairingCodesCollection(): Promise<Collection<DevicePairingCodeDocument>> {
+	const db = await getDb()
+	return db.collection<DevicePairingCodeDocument>("device_pairing_codes")
+}
+
 export async function ensureIndexes(): Promise<void> {
-	const [users, leads, recipients, machines, locations, inventory, orgs, blogs, roles, permissions] = await Promise.all([
-		usersCollection(),
-		leadsCollection(),
-		leadRecipientsCollection(),
-		machinesCollection(),
-		locationsCollection(),
-		inventoryCollection(),
-		organizationsCollection(),
-		blogPostsCollection(),
-		rolesCollection(),
-		permissionsCollection(),
-	])
+	const [users, leads, recipients, machines, locations, inventory, orgs, blogs, roles, permissions, pairingCodes] =
+		await Promise.all([
+			usersCollection(),
+			leadsCollection(),
+			leadRecipientsCollection(),
+			machinesCollection(),
+			locationsCollection(),
+			inventoryCollection(),
+			organizationsCollection(),
+			blogPostsCollection(),
+			rolesCollection(),
+			permissionsCollection(),
+			devicePairingCodesCollection(),
+		])
 
 	await ensureInviteTokenHashIndex(users)
 
@@ -96,6 +104,11 @@ export async function ensureIndexes(): Promise<void> {
 		machines.createIndex({ orgSlug: 1, status: 1 }),
 		machines.createIndex({ locationId: 1 }),
 		machines.createIndex({ orgId: 1 }),
+		machines.createIndex({ deviceKeyHash: 1 }, {
+			unique: true,
+			partialFilterExpression: { deviceKeyHash: { $type: "string" } },
+		}),
+		machines.createIndex({ installState: 1 }),
 		locations.createIndex({ path: 1 }),
 		locations.createIndex({ name: 1, city: 1 }),
 		locations.createIndex({ orgSlug: 1, name: 1 }),
@@ -106,6 +119,9 @@ export async function ensureIndexes(): Promise<void> {
 		orgs.createIndex({ name: 1 }),
 		blogs.createIndex({ slug: 1 }, { unique: true }),
 		blogs.createIndex({ status: 1, publishedAt: -1 }),
+		pairingCodes.createIndex({ codeHash: 1 }, { unique: true }),
+		pairingCodes.createIndex({ machineId: 1, createdAt: -1 }),
+		pairingCodes.createIndex({ retainUntil: 1 }, { expireAfterSeconds: 0 }),
 	])
 }
 

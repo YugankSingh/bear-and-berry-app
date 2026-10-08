@@ -90,6 +90,17 @@ export async function createMachine(
 		uptimePercent: input.uptimePercent,
 		cupsToday: input.cupsToday,
 		lastHeartbeatAt: input.status === "online" ? now : null,
+		installState: "unpaired",
+		deviceStatusMessage: null,
+		opsUsername: null,
+		opsPasswordEnc: null,
+		opsPasswordSetAt: null,
+		deviceKeyHash: null,
+		deviceKeyPreviousHash: null,
+		deviceKeyPreviousExpiresAt: null,
+		deviceKeySetAt: null,
+		sshHost: null,
+		pairedAt: null,
 		createdAt: now,
 		updatedAt: now,
 	}
@@ -124,6 +135,9 @@ export async function updateMachine(
 	if (input.uptimePercent !== undefined) $set.uptimePercent = input.uptimePercent
 	if (input.cupsToday !== undefined) $set.cupsToday = input.cupsToday
 	if (input.tags !== undefined) $set.tags = input.tags
+	if (input.sshHost !== undefined) $set.sshHost = input.sshHost
+	if (input.installState !== undefined) $set.installState = input.installState
+	if (input.deviceStatusMessage !== undefined) $set.deviceStatusMessage = input.deviceStatusMessage
 
 	const nextLocationId = input.locationId !== undefined ? toObjectId(input.locationId) : current.locationId
 	const nextSerial = input.serialNumber ?? current.serialNumber

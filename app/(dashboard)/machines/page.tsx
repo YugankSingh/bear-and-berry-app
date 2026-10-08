@@ -3,6 +3,7 @@ import { PageShell, getDashboardUser } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/empty-state"
 import { MachineTagsEditor } from "@/components/machines/machine-tags-editor"
+import { MachineDevicePanel } from "@/components/machines/machine-device-panel"
 import { hasPermission } from "@/lib/auth/rbac"
 import { loadVisibleFleet } from "@/lib/auth/visible-fleet"
 import { formatNumber, titleCase } from "@/lib/format"
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 export default async function MachinesPage() {
 	const user = await getDashboardUser()
 	const canEdit = hasPermission(user, "machines:write")
+	const canPair = hasPermission(user, "devices:pair")
 	let machines = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["machines"]
 	try {
 		machines = (await loadVisibleFleet(user)).machines
@@ -41,6 +43,7 @@ export default async function MachinesPage() {
 								<th className="px-6 py-4 font-semibold">Location</th>
 								<th className="px-6 py-4 font-semibold">Status</th>
 								<th className="px-6 py-4 font-semibold">Tags</th>
+								<th className="px-6 py-4 font-semibold">Device</th>
 								<th className="px-6 py-4 font-semibold">Uptime</th>
 								<th className="px-6 py-4 font-semibold">Cups today</th>
 							</tr>
@@ -75,6 +78,17 @@ export default async function MachinesPage() {
 											machineId={machine.id}
 											tags={machine.tags}
 											canEdit={canEdit}
+										/>
+									</td>
+									<td className="px-6 py-5">
+										<MachineDevicePanel
+											machineId={machine.id}
+											machineName={machine.name}
+											installState={machine.installState}
+											opsUsername={machine.opsUsername}
+											sshHost={machine.sshHost}
+											hasOpsPassword={machine.hasOpsPassword}
+											canPair={canPair}
 										/>
 									</td>
 									<td className="px-6 py-5 text-[13px]">{machine.uptimePercent.toFixed(1)}%</td>

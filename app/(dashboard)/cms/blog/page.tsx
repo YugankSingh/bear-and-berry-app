@@ -7,6 +7,7 @@ import { listBlogPosts } from "@/lib/repositories/blogs"
 import { requireVendforgeCms } from "@/lib/auth/require-auth"
 import { hasPermission } from "@/lib/auth/permissions"
 import { toRoute } from "@/lib/auth/next-path"
+import { getPublicBlogUrl } from "@/lib/env"
 import { formatDate, titleCase } from "@/lib/format"
 
 export const metadata: Metadata = {
@@ -66,6 +67,16 @@ export default async function BlogCmsPage() {
 											<p className="text-[14px] font-medium text-[#1A1A1A]">{post.title}</p>
 										)}
 										<p className="mt-1 text-[12px] text-[#8C8C8C]">/{post.slug}</p>
+										{post.status === "published" ? (
+											<a
+												href={getPublicBlogUrl(post.slug)}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="mt-1 inline-block text-[12px] text-[#BD0C16] hover:underline"
+											>
+												View on bearandberry.in
+											</a>
+										) : null}
 									</td>
 									<td className="px-6 py-5">
 										<Badge tone={post.status === "published" ? "berry" : "neutral"}>

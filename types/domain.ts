@@ -21,6 +21,7 @@ export const PERMISSIONS = [
 	"leads:notify",
 	"machines:read",
 	"machines:write",
+	"devices:pair",
 	"locations:read",
 	"locations:write",
 	"inventory:read",
@@ -80,6 +81,17 @@ export type MachineStatus = (typeof MACHINE_STATUSES)[number]
 
 export const MACHINE_MODELS = ["BB-01"] as const
 export type MachineModel = (typeof MACHINE_MODELS)[number]
+
+export const MACHINE_INSTALL_STATES = [
+	"unpaired",
+	"pairing",
+	"ssh_ready",
+	"key_ready",
+	"hardened",
+	"kiosk_ready",
+	"error",
+] as const
+export type MachineInstallState = (typeof MACHINE_INSTALL_STATES)[number]
 
 export const SITE_TYPES = ["office", "gym", "mall", "campus", "transit", "other"] as const
 export type SiteType = (typeof SITE_TYPES)[number]
@@ -211,6 +223,14 @@ export type MachineRecord = {
 	uptimePercent: number
 	cupsToday: number
 	lastHeartbeatAt: string | null
+	installState: MachineInstallState
+	deviceStatusMessage: string | null
+	opsUsername: string | null
+	opsPasswordSetAt: string | null
+	hasOpsPassword: boolean
+	hasDeviceKey: boolean
+	sshHost: string | null
+	pairedAt: string | null
 	createdAt: string
 	updatedAt: string
 }

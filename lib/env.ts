@@ -9,6 +9,21 @@ const envSchema = z.object({
 	AUTH_SECRET: z.string().min(32).optional(),
 	SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
 	INVITE_TTL_DAYS: z.coerce.number().int().positive().default(7),
+/** Machine pairing code lifetime in ms (default 10 minutes). */
+	DEVICE_PAIRING_TTL_MS: z.coerce.number().int().positive().default(600_000),
+	/** Grace window where previous device API key still works after rotation (default 48h). */
+	DEVICE_KEY_ROTATION_GRACE_MS: z.coerce.number().int().positive().default(172_800_000),
+	/** Absolute path to device scripts; defaults to ./device-scripts in the app. */
+	DEVICE_SCRIPTS_DIR: z.string().min(1).optional(),
+	/** Absolute path to OTA release bundles; defaults to ./device-releases. */
+	DEVICE_RELEASES_DIR: z.string().min(1).optional(),
+	/** Newline-separated SSH public keys pushed to machines on bootstrap. */
+	DEVICE_SSH_AUTHORIZED_KEYS: z.string().optional(),
+	/** When true, pair responses allow the purge-users stage (still needs BB_PURGE_USERS=1). */
+	DEVICE_PURGE_USERS_ENABLED: z
+		.enum(["0", "1", "true", "false", "TRUE", "FALSE"])
+		.optional()
+		.transform((value) => value === "1" || value === "true" || value === "TRUE"),
 	MONGODB_URI: z.string().min(1).optional(),
 	SEED_ADMIN_EMAIL: z.string().email().optional(),
 	SMTP_EMAIL: z.string().optional(),
@@ -49,6 +64,12 @@ export function getEnv(): AppEnv {
 		AUTH_SECRET: emptyToUndefined(process.env.AUTH_SECRET),
 		SESSION_TTL_DAYS: process.env.SESSION_TTL_DAYS,
 		INVITE_TTL_DAYS: process.env.INVITE_TTL_DAYS,
+		DEVICE_PAIRING_TTL_MS: process.env.DEVICE_PAIRING_TTL_MS,
+		DEVICE_KEY_ROTATION_GRACE_MS: process.env.DEVICE_KEY_ROTATION_GRACE_MS,
+		DEVICE_SCRIPTS_DIR: emptyToUndefined(process.env.DEVICE_SCRIPTS_DIR),
+		DEVICE_RELEASES_DIR: emptyToUndefined(process.env.DEVICE_RELEASES_DIR),
+		DEVICE_SSH_AUTHORIZED_KEYS: emptyToUndefined(process.env.DEVICE_SSH_AUTHORIZED_KEYS),
+		DEVICE_PURGE_USERS_ENABLED: emptyToUndefined(process.env.DEVICE_PURGE_USERS_ENABLED),
 		MONGODB_URI: emptyToUndefined(process.env.MONGODB_URI),
 		SEED_ADMIN_EMAIL: emptyToUndefined(process.env.SEED_ADMIN_EMAIL),
 		SMTP_EMAIL: emptyToUndefined(process.env.SMTP_EMAIL),
@@ -98,12 +119,41 @@ export function getLandingUrl(): string {
 	return getEnv().LANDING_URL ?? "http://localhost:3000"
 }
 
+export function getPublicBlogUrl(slug: string): string {
+	const base = getLandingUrl().replace(/\/$/, "")
+	return `${base}/blog/${slug}`
+}
+
 export function getLandingKey(): string | undefined {
 	return getEnv().LANDING_KEY
 }
 
 export function getInviteTtlDays(): number {
 	return getEnv().INVITE_TTL_DAYS
+}
+
+export function getDevicePairingTtlMs(): number {
+	return getEnv().DEVICE_PAIRING_TTL_MS
+}
+
+export function getDeviceKeyRotationGraceMs(): number {
+	return getEnv().DEVICE_KEY_ROTATION_GRACE_MS
+}
+
+export function getDeviceScriptsDir(): string | undefined {
+	return getEnv().DEVICE_SCRIPTS_DIR
+}
+
+export function getDeviceReleasesDir(): string | undefined {
+	return getEnv().DEVICE_RELEASES_DIR
+}
+
+export function getDeviceSshAuthorizedKeys(): string {
+	return getEnv().DEVICE_SSH_AUTHORIZED_KEYS?.trim() ?? ""
+}
+
+export function isDevicePurgeUsersEnabled(): boolean {
+	return Boolean(getEnv().DEVICE_PURGE_USERS_ENABLED)
 }
 
 export function getAuthSecret(): string {

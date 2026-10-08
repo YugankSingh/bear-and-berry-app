@@ -7,9 +7,14 @@ import type { BlogPostRecord, BlogStatus } from "@/types/cms"
 
 type BlogEditorProps = {
 	post?: BlogPostRecord
+	landingUrl?: string
 }
 
-export function BlogEditor({ post }: BlogEditorProps) {
+function publicBlogUrl(landingUrl: string, slug: string): string {
+	return `${landingUrl.replace(/\/$/, "")}/blog/${slug}`
+}
+
+export function BlogEditor({ post, landingUrl }: BlogEditorProps) {
 	const router = useRouter()
 	const [title, setTitle] = useState(post?.title ?? "")
 	const [slug, setSlug] = useState(post?.slug ?? "")
@@ -26,6 +31,7 @@ export function BlogEditor({ post }: BlogEditorProps) {
 	const [body, setBody] = useState(post?.content ?? "")
 	const [error, setError] = useState("")
 	const [loading, setLoading] = useState(false)
+	const showPublicLink = Boolean(landingUrl && slug && post?.status === "published")
 
 	async function onSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault()
@@ -87,13 +93,25 @@ export function BlogEditor({ post }: BlogEditorProps) {
 				/>
 			)}
 			<div className="grid gap-3 md:grid-cols-2">
-				<input
-					required
-					value={slug}
-					onChange={(event) => setSlug(event.target.value)}
-					placeholder="url-slug"
-					className="rounded-2xl border border-[#ECEAE6] bg-white px-5 py-3 text-[14px] outline-none"
-				/>
+				<div>
+					<input
+						required
+						value={slug}
+						onChange={(event) => setSlug(event.target.value)}
+						placeholder="url-slug"
+						className="w-full rounded-2xl border border-[#ECEAE6] bg-white px-5 py-3 text-[14px] outline-none"
+					/>
+					{showPublicLink && landingUrl ? (
+						<a
+							href={publicBlogUrl(landingUrl, post?.slug ?? slug)}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="mt-2 inline-block text-[12px] text-[#BD0C16] hover:underline"
+						>
+							View on bearandberry.in
+						</a>
+					) : null}
+				</div>
 				<input
 					required
 					value={category}

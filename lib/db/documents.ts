@@ -3,6 +3,7 @@ import type {
 	LeadIntent,
 	LeadSource,
 	LeadStatus,
+	MachineInstallState,
 	MachineModel,
 	MachineStatus,
 	OrgKind,
@@ -129,6 +130,17 @@ export type MachineDocument = {
 	uptimePercent: number
 	cupsToday: number
 	lastHeartbeatAt: Date | null
+	installState?: MachineInstallState
+	deviceStatusMessage?: string | null
+	opsUsername?: string | null
+	opsPasswordEnc?: string | null
+	opsPasswordSetAt?: Date | null
+	deviceKeyHash?: string | null
+	deviceKeyPreviousHash?: string | null
+	deviceKeyPreviousExpiresAt?: Date | null
+	deviceKeySetAt?: Date | null
+	sshHost?: string | null
+	pairedAt?: Date | null
 	createdAt: Date
 	updatedAt: Date
 }
@@ -167,6 +179,24 @@ export type LeadRecipientDocument = {
 	_id: ObjectId
 	email: string
 	tags: string[]
+	createdAt: Date
+	updatedAt: Date
+}
+
+/**
+ * Machine-bound pairing codes.
+ * The 8-digit code itself authenticates the device until expiresAt.
+ * Looking up the code resolves which machine record is being provisioned.
+ */
+export type DevicePairingCodeDocument = {
+	_id: ObjectId
+	machineId: ObjectId
+	codeHash: string
+	expiresAt: Date
+	createdByUserId: ObjectId
+	revokedAt: Date | null
+	/** Mongo TTL sweeper target (same as expiresAt unless revoked early). */
+	retainUntil: Date
 	createdAt: Date
 	updatedAt: Date
 }

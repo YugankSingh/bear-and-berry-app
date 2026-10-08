@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { MACHINE_MODELS, MACHINE_STATUSES } from "@/types/domain"
+import { MACHINE_INSTALL_STATES, MACHINE_MODELS, MACHINE_STATUSES } from "@/types/domain"
 
 export const machineCreateSchema = z.object({
 	name: z.string().trim().min(2).max(80),
@@ -12,7 +12,11 @@ export const machineCreateSchema = z.object({
 	tags: z.array(z.string().trim().min(1).max(40)).optional(),
 })
 
-export const machinePatchSchema = machineCreateSchema.partial()
+export const machinePatchSchema = machineCreateSchema.partial().extend({
+	sshHost: z.string().trim().min(1).max(255).nullable().optional(),
+	installState: z.enum(MACHINE_INSTALL_STATES).optional(),
+	deviceStatusMessage: z.string().trim().max(500).nullable().optional(),
+})
 
 export type MachineCreateInput = z.infer<typeof machineCreateSchema>
 export type MachinePatchInput = z.infer<typeof machinePatchSchema>

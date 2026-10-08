@@ -6,6 +6,7 @@ import { BlogEditor } from "@/components/cms/blog-editor"
 import { requireVendforgeCms } from "@/lib/auth/require-auth"
 import { blogPostsCollection } from "@/lib/db/collections"
 import { mapBlogPost } from "@/lib/db/mappers"
+import { getLandingUrl } from "@/lib/env"
 
 export const metadata: Metadata = {
 	title: "Edit blog post",
@@ -33,7 +34,7 @@ export default async function EditBlogPostPage({ params }: EditBlogPageProps) {
 			subtitle="Saving a published post refreshes that article on the landing page."
 			permission="cms:write"
 		>
-			<BlogEditor post={mapBlogPost(doc)} />
+			<BlogEditor post={mapBlogPost(doc)} landingUrl={getLandingUrl()} />
 		</PageShell>
 	)
 }
