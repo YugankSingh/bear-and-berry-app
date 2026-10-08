@@ -7,8 +7,14 @@ import { RemoveUserButton } from "@/components/team/remove-user-button"
 import { ResendInviteButton } from "@/components/team/resend-invite-button"
 import { UserPermissionsButton } from "@/components/team/user-permissions-button"
 import { listUsers } from "@/lib/repositories/users"
-import { listPermissionCatalog, listRoles } from "@/lib/repositories/roles"
-import { grantablePermissions, hasAllOrganizations, hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
+import { listRoles } from "@/lib/repositories/roles"
+import {
+	PERMISSION_CATALOG,
+	grantablePermissions,
+	hasAllOrganizations,
+	hasPermission,
+	isSystemAdmin,
+} from "@/lib/auth/permissions"
 import {
 	assignableRoles,
 	canManageUser,
@@ -30,18 +36,17 @@ export default async function TeamPage() {
 	const canRemove = hasPermission(user, "users:delete")
 	const canGrant = hasPermission(user, "users:grant")
 	let roles = assignableRoles(user, [])
-	let catalog = [] as Awaited<ReturnType<typeof listPermissionCatalog>>
+	const catalog = [...PERMISSION_CATALOG]
 	let users = [] as Awaited<ReturnType<typeof listUsers>>
 	let organizations = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["organizations"]
 	let locations = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["locations"]
 	let machines = [] as Awaited<ReturnType<typeof loadVisibleFleet>>["machines"]
 
 	try {
-		const [allUsers, fleet, allRoles, permissions] = await Promise.all([
+		const [allUsers, fleet, allRoles] = await Promise.all([
 			listUsers(user.activeOrgSlug ? { orgSlug: user.activeOrgSlug } : {}),
 			loadVisibleFleet(user),
 			listRoles(),
-			listPermissionCatalog(),
 		])
 		users = allUsers.filter((member) => {
 			if (!canSeeTeamMember(user, member)) {
@@ -53,7 +58,6 @@ export default async function TeamPage() {
 			return memberVisibleInOrg(member, user.activeOrgSlug)
 		})
 		roles = assignableRoles(user, allRoles)
-		catalog = permissions
 		organizations = fleet.organizations
 		locations = fleet.locations
 		machines = fleet.machines

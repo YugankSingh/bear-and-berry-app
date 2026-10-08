@@ -1,13 +1,12 @@
-import { permissionsCollection, rolesCollection } from "@/lib/db/collections"
+import { rolesCollection } from "@/lib/db/collections"
 import { toIso } from "@/lib/db/mappers"
 import { DEFAULT_ROLES } from "@/lib/auth/default-roles"
 import {
-	PERMISSION_META,
 	normalizePermissions,
 	roleHasPermission,
 	sanitizeRolePermissions,
 } from "@/lib/auth/permissions"
-import { ORGS_ALL_PERMISSION, PERMISSIONS, SYSTEM_ADMIN_PERMISSION, type PermissionRecord, type RoleRecord } from "@/types/domain"
+import { ORGS_ALL_PERMISSION, SYSTEM_ADMIN_PERMISSION, type RoleRecord } from "@/types/domain"
 import type { RoleDocument } from "@/lib/db/documents"
 
 export function mapRole(doc: RoleDocument): RoleRecord {
@@ -107,40 +106,9 @@ export async function updateRole(
 	return result ? mapRole(result) : null
 }
 
-export async function listPermissionCatalog(): Promise<PermissionRecord[]> {
-	const permissions = await permissionsCollection()
-	const docs = await permissions.find({}).sort({ group: 1, key: 1 }).toArray()
-	if (docs.length > 0) {
-		return docs.map((doc) => ({
-			key: doc.key,
-			name: doc.name,
-			group: doc.group,
-		}))
-	}
-	return PERMISSIONS.map((key) => ({
-		key,
-		name: PERMISSION_META[key].name,
-		group: PERMISSION_META[key].group,
-	}))
-}
-
-export async function ensureRbacCatalog(): Promise<void> {
-	const [roles, permissions] = await Promise.all([rolesCollection(), permissionsCollection()])
+export async function ensureDefaultRoles(): Promise<void> {
+	const roles = await rolesCollection()
 	const now = new Date()
-
-	await Promise.all(
-		PERMISSIONS.map(async (key) => {
-			const meta = PERMISSION_META[key]
-			await permissions.updateOne(
-				{ key },
-				{
-					$set: { name: meta.name, group: meta.group, updatedAt: now },
-					$setOnInsert: { key, createdAt: now },
-				},
-				{ upsert: true },
-			)
-		}),
-	)
 
 	for (const seed of DEFAULT_ROLES) {
 		const existing = await roles.findOne({ slug: seed.slug })

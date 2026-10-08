@@ -1,6 +1,6 @@
-import { ensureIndexes } from "@/lib/db/collections"
+import { dropRetiredCollections, ensureIndexes } from "@/lib/db/collections"
 import { backfillFleetDenorm } from "@/lib/db/backfill-fleet"
-import { ensureRbacCatalog } from "@/lib/repositories/roles"
+import { ensureDefaultRoles } from "@/lib/repositories/roles"
 import { seedLeadRecipientsIfEmpty } from "@/lib/repositories/lead-recipients"
 import { upsertOrganization } from "@/lib/repositories/organizations"
 import { BEAR_AND_BERRY_SLUG, VENDFORGE_LABS_SLUG } from "@/lib/auth/scope"
@@ -22,9 +22,10 @@ export async function ensureDatabaseReady(): Promise<void> {
 }
 
 async function bootstrap(): Promise<void> {
+	await dropRetiredCollections()
 	await ensureIndexes()
 	await backfillFleetDenorm()
-	await ensureRbacCatalog()
+	await ensureDefaultRoles()
 	await seedLeadRecipientsIfEmpty()
 	await upsertOrganization({
 		slug: BEAR_AND_BERRY_SLUG,

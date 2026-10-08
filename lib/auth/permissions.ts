@@ -3,6 +3,7 @@ import {
 	PERMISSIONS,
 	SYSTEM_ADMIN_PERMISSION,
 	type Permission,
+	type PermissionRecord,
 	type RoleRecord,
 } from "@/types/domain"
 import { GRANT_WILDCARD, hasAnyCapability, hasCapability, hasOrgWildcard, type AccessGrant } from "@/lib/auth/grants"
@@ -44,6 +45,12 @@ export const PERMISSION_META: Record<Permission, { name: string; group: string }
 	"system:admin": { name: "System administrator", group: "access" },
 	"developer:read": { name: "View developer diagnostics", group: "developer" },
 }
+
+export const PERMISSION_CATALOG: readonly PermissionRecord[] = PERMISSIONS.map((key) => ({
+	key,
+	name: PERMISSION_META[key].name,
+	group: PERMISSION_META[key].group,
+})).sort((left, right) => left.group.localeCompare(right.group) || left.key.localeCompare(right.key))
 
 export const PERMISSION_GROUP_LABELS: Record<string, string> = {
 	dashboard: "Dashboard",

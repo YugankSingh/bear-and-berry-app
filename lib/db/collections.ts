@@ -9,7 +9,6 @@ import type {
 	MachineDocument,
 	OrganizationDocument,
 	LeadRecipientDocument,
-	PermissionDocument,
 	RoleDocument,
 	UserDocument,
 } from "@/lib/db/documents"
@@ -59,18 +58,24 @@ export async function rolesCollection(): Promise<Collection<RoleDocument>> {
 	return db.collection<RoleDocument>("roles")
 }
 
-export async function permissionsCollection(): Promise<Collection<PermissionDocument>> {
-	const db = await getDb()
-	return db.collection<PermissionDocument>("permissions")
-}
-
 export async function devicePairingCodesCollection(): Promise<Collection<DevicePairingCodeDocument>> {
 	const db = await getDb()
 	return db.collection<DevicePairingCodeDocument>("device_pairing_codes")
 }
 
+/** Permissions are defined in code (`PERMISSIONS`); never store them in Mongo. */
+const RETIRED_COLLECTIONS = ["permissions"]
+
+export async function dropRetiredCollections(): Promise<void> {
+	const db = await getDb()
+	const existing = await db
+		.listCollections({ name: { $in: RETIRED_COLLECTIONS } }, { nameOnly: true })
+		.toArray()
+	await Promise.all(existing.map((collection) => db.dropCollection(collection.name)))
+}
+
 export async function ensureIndexes(): Promise<void> {
-	const [users, leads, recipients, machines, locations, inventory, orgs, blogs, roles, permissions, pairingCodes] =
+	const [users, leads, recipients, machines, locations, inventory, orgs, blogs, roles, pairingCodes] =
 		await Promise.all([
 			usersCollection(),
 			leadsCollection(),
@@ -81,7 +86,6 @@ export async function ensureIndexes(): Promise<void> {
 			organizationsCollection(),
 			blogPostsCollection(),
 			rolesCollection(),
-			permissionsCollection(),
 			devicePairingCodesCollection(),
 		])
 
@@ -93,7 +97,6 @@ export async function ensureIndexes(): Promise<void> {
 		users.createIndex({ orgSlug: 1, deletedAt: 1, createdAt: -1 }),
 		users.createIndex({ role: 1, deletedAt: 1, isActive: 1 }),
 		roles.createIndex({ slug: 1 }, { unique: true }),
-		permissions.createIndex({ key: 1 }, { unique: true }),
 		leads.createIndex({ createdAt: -1 }),
 		leads.createIndex({ email: 1, createdAt: -1 }),
 		leads.createIndex({ archivedAt: 1, createdAt: -1 }),

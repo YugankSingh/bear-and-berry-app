@@ -63,15 +63,6 @@ export type RoleDocument = {
 	updatedAt: Date
 }
 
-export type PermissionDocument = {
-	_id: ObjectId
-	key: Permission
-	name: string
-	group: string
-	createdAt: Date
-	updatedAt: Date
-}
-
 export type LeadCommentDocument = {
 	id: string
 	body: string
