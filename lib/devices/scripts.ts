@@ -16,6 +16,14 @@ const ALLOWED_SCRIPTS = new Set([
 
 const PUBLIC_SCRIPTS = new Set(["bootstrap.sh"])
 
+/** While a pairing code is live, only foothold scripts — not destructive later stages. */
+const PAIRING_CODE_SCRIPTS = new Set([
+	"bootstrap.sh",
+	"bin/bb-run",
+	"lib/common.sh",
+	"stages/10-ops-user.sh",
+])
+
 export function normalizeScriptPath(raw: string | string[]): string | null {
 	const joined = Array.isArray(raw) ? raw.join("/") : raw
 	const cleaned = joined.replace(/\\/g, "/").replace(/^\/+/, "")
@@ -30,6 +38,10 @@ export function normalizeScriptPath(raw: string | string[]): string | null {
 
 export function isPublicDeviceScript(scriptPath: string): boolean {
 	return PUBLIC_SCRIPTS.has(scriptPath)
+}
+
+export function isPairingCodeAllowedScript(scriptPath: string): boolean {
+	return PAIRING_CODE_SCRIPTS.has(scriptPath)
 }
 
 function candidateRoots(): string[] {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { resolveActivePairingCode } from "@/lib/repositories/device-pairing"
 import { requireDeviceAuth } from "@/lib/devices/auth"
 import {
+	isPairingCodeAllowedScript,
 	isPublicDeviceScript,
 	normalizeScriptPath,
 	readDeviceScript,
@@ -30,6 +31,9 @@ async function authorizeScriptAccess(request: Request, scriptPath: string): Prom
 	}
 
 	if (code) {
+		if (!isPairingCodeAllowedScript(scriptPath)) {
+			throw new AuthError("Pairing code cannot fetch that script; use the device API key.", 403)
+		}
 		const session = await resolveActivePairingCode(code)
 		if (!session) {
 			throw new AuthError("Pairing code is invalid, expired, or revoked.", 403)
