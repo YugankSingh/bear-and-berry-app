@@ -17,6 +17,8 @@ function getSecret(): Uint8Array | null {
 	return new TextEncoder().encode(secret)
 }
 
+
+
 function resolveJwtAccessStatus(value: unknown): AccessStatus {
 	if (value === "waitlisted" || value === "pending_invite") {
 		return value
