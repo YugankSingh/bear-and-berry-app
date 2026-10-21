@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { canSeeLocation, canSeeMachine } from "@/lib/auth/fleet-access"
 import { canAssignRole, canManageUser } from "@/lib/auth/team-access"
-import { canAccessCms, visibleNavItems } from "@/lib/auth/rbac"
+import { canAccessCms, defaultAdminHome, visibleNavItems } from "@/lib/auth/rbac"
 import { grant, sessionUser } from "../helpers/auth"
 import type { RoleRecord, UserRecord } from "@/types/domain"
 
@@ -251,6 +251,27 @@ describe("CMS and nav visibility", () => {
 			"admin",
 		)
 		expect(adminNoLeads.some((item) => item.href.includes("/leads"))).toBe(false)
+	})
+
+	it("defaultAdminHome sends CMS-only users to blog CMS, not Overview", () => {
+		const cmsOnly = sessionUser({
+			permissions: ["cms:read", "cms:write"],
+			grants: [grant("cms", "view"), grant("cms", "edit")],
+			canAccessAdmin: true,
+			orgSlug: "vendforge-labs",
+			activeOrgSlug: "",
+		})
+		expect(defaultAdminHome(cmsOnly)).toBe("/admin/cms/blog")
+		expect(defaultAdminHome(cmsOnly)).not.toBe("/admin")
+
+		const withOverview = sessionUser({
+			permissions: ["dashboard:read", "cms:read"],
+			grants: [grant("dashboard", "view", { org: "*" }), grant("cms", "view")],
+			canAccessAdmin: true,
+			orgSlug: "vendforge-labs",
+			activeOrgSlug: "",
+		})
+		expect(defaultAdminHome(withOverview)).toBe("/admin")
 	})
 })
 

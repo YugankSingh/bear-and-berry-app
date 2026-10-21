@@ -11,9 +11,17 @@ type TopbarProps = {
 	user: SessionUser
 	environment: "development" | "staging" | "production"
 	workspace?: "admin" | "org"
+	adminHome?: string
 }
 
-export function Topbar({ title, subtitle, user, environment, workspace = "org" }: TopbarProps) {
+export function Topbar({
+	title,
+	subtitle,
+	user,
+	environment,
+	workspace = "org",
+	adminHome = "/admin",
+}: TopbarProps) {
 	const router = useRouter()
 
 	async function signOut() {
@@ -39,6 +47,7 @@ export function Topbar({ title, subtitle, user, environment, workspace = "org" }
 						orgs={user.accessibleOrgs}
 						activeOrgSlug={user.activeOrgSlug}
 						canAccessAdmin={user.canAccessAdmin}
+						adminHome={adminHome}
 					/>
 				) : null}
 				<div className="hidden text-right sm:block">

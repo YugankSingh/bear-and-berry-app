@@ -10,9 +10,15 @@ type OrgSwitcherProps = {
 	orgs: AccessibleOrg[]
 	activeOrgSlug: string
 	canAccessAdmin?: boolean
+	adminHome?: string
 }
 
-export function OrgSwitcher({ orgs, activeOrgSlug, canAccessAdmin = false }: OrgSwitcherProps) {
+export function OrgSwitcher({
+	orgs,
+	activeOrgSlug,
+	canAccessAdmin = false,
+	adminHome = "/admin",
+}: OrgSwitcherProps) {
 	const router = useRouter()
 	const pathname = usePathname()
 	const [pending, startTransition] = useTransition()
@@ -20,7 +26,7 @@ export function OrgSwitcher({ orgs, activeOrgSlug, canAccessAdmin = false }: Org
 	function switchTo(value: string) {
 		startTransition(() => {
 			if (value === "admin") {
-				router.push(toRoute("/admin"))
+				router.push(toRoute(adminHome))
 				return
 			}
 			if (value === "picker") {

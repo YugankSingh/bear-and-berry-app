@@ -5,7 +5,7 @@ import { getSessionUser, hasSessionCookie } from "@/lib/auth/session"
 import { getAppEnvironment } from "@/lib/env"
 import { Topbar } from "@/components/layout/topbar"
 import type { Permission, SessionUser } from "@/types/domain"
-import { hasPermission } from "@/lib/auth/rbac"
+import { defaultAdminHome, hasPermission } from "@/lib/auth/rbac"
 import { ORGANIZATION_ROOT, organizationPath } from "@/lib/auth/workspace"
 
 type PageShellProps = {
@@ -24,7 +24,13 @@ export async function PageShell({ title, subtitle, permission, children }: PageS
 		redirectTo("/waitlist")
 	}
 	if (!hasPermission(user, permission)) {
-		redirectTo(user.activeOrgSlug ? organizationPath(user.activeOrgSlug) : user.canAccessAdmin ? "/admin" : ORGANIZATION_ROOT)
+		redirectTo(
+			user.activeOrgSlug
+				? organizationPath(user.activeOrgSlug)
+				: user.canAccessAdmin
+					? defaultAdminHome(user)
+					: ORGANIZATION_ROOT,
+		)
 	}
 
 	const workspace = user.activeOrgSlug ? "org" : "admin"
@@ -37,6 +43,7 @@ export async function PageShell({ title, subtitle, permission, children }: PageS
 				user={user}
 				environment={getAppEnvironment()}
 				workspace={workspace}
+				adminHome={defaultAdminHome(user)}
 			/>
 			<div className="px-8 pt-8 md:px-10">{children}</div>
 		</>

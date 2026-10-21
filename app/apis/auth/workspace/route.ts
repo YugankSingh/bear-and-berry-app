@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { requireDashboardSession } from "@/lib/auth/require-auth"
+import { defaultAdminHome } from "@/lib/auth/rbac"
 import { setSessionCookie, setWorkspaceCookie } from "@/lib/auth/session"
 import { ADMIN_WORKSPACE, canAccessAdminWorkspace, canUseOrganization, organizationPath } from "@/lib/auth/workspace"
 import { fail, ok } from "@/lib/api/response"
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
 			const next = { ...user, activeOrgSlug: "" }
 			await setWorkspaceCookie(ADMIN_WORKSPACE)
 			await setSessionCookie(next)
-			return ok({ home: "/admin", workspace: ADMIN_WORKSPACE })
+			return ok({ home: defaultAdminHome(next), workspace: ADMIN_WORKSPACE })
 		}
 
 		const orgSlug = body.orgSlug

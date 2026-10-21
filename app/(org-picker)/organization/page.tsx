@@ -4,6 +4,8 @@ import { getDashboardUser } from "@/components/layout/page-shell"
 import { BrandLockup } from "@/components/brand/brand-lockup"
 import { organizationPath } from "@/lib/auth/org-path"
 import { redirectTo, toRoute } from "@/lib/auth/next-path"
+import { defaultAdminHome } from "@/lib/auth/rbac"
+import { ORGANIZATION_ROOT } from "@/lib/auth/workspace"
 import { getAppEnvironment } from "@/lib/env"
 import { getAppEnvironmentLabel } from "@/lib/env-client"
 
@@ -14,10 +16,11 @@ export const metadata: Metadata = {
 export default async function OrganizationPickerPage() {
 	const user = await getDashboardUser()
 	const orgs = user.accessibleOrgs
+	const adminHome = defaultAdminHome(user)
 
 	// Skip the picker when there is only one place to go.
-	if (orgs.length === 0 && user.canAccessAdmin) {
-		redirectTo("/admin")
+	if (orgs.length === 0 && user.canAccessAdmin && adminHome !== ORGANIZATION_ROOT) {
+		redirectTo(adminHome)
 	}
 	if (orgs.length === 1) {
 		redirectTo(organizationPath(orgs[0]!.slug, "/overview"))
@@ -30,9 +33,9 @@ export default async function OrganizationPickerPage() {
 					<BrandLockup size="sm" />
 				</div>
 				<div className="flex items-center gap-3">
-					{user.canAccessAdmin ? (
+					{user.canAccessAdmin && adminHome !== ORGANIZATION_ROOT ? (
 						<Link
-							href={toRoute("/admin")}
+							href={toRoute(adminHome)}
 							className="rounded-full border border-[#ECEAE6] bg-white px-5 py-[11px] text-[13px] text-[#1A1A1A]/70 hover:text-[#1A1A1A]"
 						>
 							Platform

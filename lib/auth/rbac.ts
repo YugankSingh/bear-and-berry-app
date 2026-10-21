@@ -1,6 +1,6 @@
 import { isVendforgeLabs } from "@/lib/auth/scope"
 import { hasPermission, isSystemAdmin } from "@/lib/auth/permissions"
-import { ADMIN_NAV, ORG_NAV, type WorkspaceKind } from "@/lib/auth/workspace"
+import { ADMIN_NAV, ORGANIZATION_ROOT, ORG_NAV, type WorkspaceKind } from "@/lib/auth/workspace"
 import type { Permission, SessionUser } from "@/types/domain"
 
 export function canAccessCms(user: SessionUser): boolean {
@@ -53,4 +53,9 @@ export function visibleNavItems(user: SessionUser, workspace: WorkspaceKind = "o
 		}
 		return hasPermission(user, item.permission)
 	})
+}
+
+/** First admin page the user can open — never assume `/admin` (Overview) is allowed. */
+export function defaultAdminHome(user: SessionUser): string {
+	return visibleNavItems(user, "admin")[0]?.href ?? ORGANIZATION_ROOT
 }

@@ -14,9 +14,10 @@ type SidebarProps = {
 	items: readonly NavItem[]
 	workspace: "admin" | "org"
 	orgId?: string
+	adminHome?: string
 }
 
-export function Sidebar({ user, items, workspace, orgId }: SidebarProps) {
+export function Sidebar({ user, items, workspace, orgId, adminHome = "/admin" }: SidebarProps) {
 	const pathname = usePathname()
 	const org = user.accessibleOrgs.find((item) => item.slug === (orgId || user.activeOrgSlug))
 
@@ -62,7 +63,7 @@ export function Sidebar({ user, items, workspace, orgId }: SidebarProps) {
 					</Link>
 				) : null}
 				{workspace === "org" && user.canAccessAdmin ? (
-					<Link href={toRoute("/admin")} className="block text-[12px] text-white/45 hover:text-white">
+					<Link href={toRoute(adminHome)} className="block text-[12px] text-white/45 hover:text-white">
 						Open platform
 					</Link>
 				) : null}

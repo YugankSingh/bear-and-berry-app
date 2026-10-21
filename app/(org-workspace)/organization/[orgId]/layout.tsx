@@ -1,7 +1,7 @@
 import { hasDashboardAccess } from "@/lib/auth/access"
 import { redirectTo } from "@/lib/auth/next-path"
 import { getSessionUser, hasSessionCookie } from "@/lib/auth/session"
-import { visibleNavItems } from "@/lib/auth/rbac"
+import { defaultAdminHome, visibleNavItems } from "@/lib/auth/rbac"
 import { getAppEnvironment } from "@/lib/env"
 import { organizationPageFromPath, organizationPath, PATH_HEADER, resolveAccessibleOrg } from "@/lib/auth/workspace"
 import { Sidebar } from "@/components/layout/sidebar"
@@ -55,6 +55,7 @@ export default async function OrganizationWorkspaceLayout({ children, params }: 
 				items={visibleNavItems(user, "org")}
 				workspace="org"
 				orgId={org.slug}
+				adminHome={defaultAdminHome(user)}
 			/>
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 				<div className="hidden" data-environment={getAppEnvironment()} />
